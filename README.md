@@ -110,12 +110,14 @@
 
 ```mermaid
 flowchart LR
-    A[1. Sign Up / Login] --> B[2. Upload PDF Docs]
-    B --> C[3. Ask AI Tutor]
-    B --> D[4. Generate Quizzes]
-    B --> E[5. Review Flashcards]
-    C & D & E --> F[6. Follow 7-Day Schedule]
-    F --> G[7. Track Progress & Level Up]
+    A["1. Sign Up / Login"] --> B["2. Upload PDF Docs"]
+    B --> C["3. Ask AI Tutor"]
+    B --> D["4. Generate Quizzes"]
+    B --> E["5. Review Flashcards"]
+    C --> F["6. Follow 7-Day Schedule"]
+    D --> F
+    E --> F
+    F --> G["7. Track Progress & Level Up"]
 ```
 
 ### Step 1: Sign Up & Log In
@@ -155,29 +157,29 @@ flowchart LR
 
 ```mermaid
 graph TD
-    subgraph Mobile Client (Flutter)
-      A[Flutter Mobile App]
-      A1[Riverpod State Management]
-      A2[GoRouter Navigation]
-      A3[Dio HTTP & SSE Client]
+    subgraph MobileClient ["Mobile Client (Flutter)"]
+      A["Flutter Mobile App"]
+      A1["Riverpod State Management"]
+      A2["GoRouter Navigation"]
+      A3["Dio HTTP & SSE Client"]
     end
 
-    subgraph Backend (Node.js + Express)
-      B[Express API Gateway]
-      B1[Auth & JWT Middleware]
-      B2[Study Orchestrator]
-      B3[Intent Router]
-      B4[Tutor, Quiz & Planner Agents]
+    subgraph BackendService ["Backend (Node.js + Express)"]
+      B["Express API Gateway"]
+      B1["Auth & JWT Middleware"]
+      B2["Study Orchestrator"]
+      B3["Intent Router"]
+      B4["Tutor, Quiz & Planner Agents"]
     end
 
-    subgraph Storage & Database (Supabase)
-      C[(PostgreSQL DB)]
-      C1[(pgvector Embeddings)]
-      C2[(Object Storage / PDFs)]
+    subgraph StorageService ["Storage & Database (Supabase)"]
+      C[("PostgreSQL DB")]
+      C1[("pgvector Embeddings")]
+      C2[("Object Storage / PDFs")]
     end
 
-    subgraph LLM Provider
-      D[Google Gemini API]
+    subgraph LLMService ["LLM Provider"]
+      D["Google Gemini API"]
     end
 
     A <-->|REST API & SSE Stream| B
@@ -354,7 +356,4 @@ git check-ignore -v backend/.env
 ```
 *(If git is initialized, this will confirm that `backend/.env` is excluded and will NOT be committed).*
 
----
 
-## 📄 License
-This project is licensed under the MIT License — feel free to use and customize for your learning journey!
