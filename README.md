@@ -337,23 +337,4 @@ AI Study/
    flutter run
    ```
 
----
-
-## 🔒 Security & GitHub Verification
-
-Before pushing to GitHub, verify that your repository is secure:
-
-### Security Protections Implemented:
-- ✅ **`.env` files are ignored**: Both root `.gitignore` and `backend/.gitignore` strictly exclude `.env`, `.env.*`, and sensitive keystores.
-- ✅ **`.env.example` provides safe placeholders**: Only dummy variables are stored in version control.
-- ✅ **No hardcoded API keys**: Gemini API keys and Supabase credentials are loaded strictly via `process.env`.
-- ✅ **Android/iOS Keystores ignored**: Keystores (`*.jks`, `*.keystore`, `google-services.json`) are ignored in `.gitignore`.
-
-### Verification Steps Before `git push`:
-Run this command from the project root to ensure `.env` is ignored:
-```bash
-git check-ignore -v backend/.env
-```
-*(If git is initialized, this will confirm that `backend/.env` is excluded and will NOT be committed).*
-
 
