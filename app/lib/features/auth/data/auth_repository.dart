@@ -6,7 +6,7 @@ class AuthRepository {
   final DioClient _api = DioClient();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  Future<void> register(String email, String password, String firstName, String lastName) async {
+  Future<UserModel?> register(String email, String password, String firstName, String lastName) async {
     final response = await _api.dio.post('/auth/register', data: {
       'email': email,
       'password': password,
@@ -14,14 +14,22 @@ class AuthRepository {
       'lastName': lastName,
     });
     await _saveTokens(response.data['accessToken'], response.data['refreshToken']);
+    if (response.data['user'] != null) {
+      return UserModel.fromJson(response.data['user']);
+    }
+    return null;
   }
 
-  Future<void> login(String email, String password) async {
+  Future<UserModel?> login(String email, String password) async {
     final response = await _api.dio.post('/auth/login', data: {
       'email': email,
       'password': password,
     });
     await _saveTokens(response.data['accessToken'], response.data['refreshToken']);
+    if (response.data['user'] != null) {
+      return UserModel.fromJson(response.data['user']);
+    }
+    return null;
   }
 
   Future<void> logout() async {

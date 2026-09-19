@@ -5,12 +5,15 @@ import '../../../../core/network/dio_client.dart';
 import '../../data/models/document_model.dart';
 import '../../data/repositories/documents_repository.dart';
 
+import '../../../auth/presentation/providers/auth_provider.dart';
+
 final documentsRepositoryProvider = Provider<DocumentsRepository>((ref) {
   final dioClient = DioClient();
   return DocumentsRepository(dioClient);
 });
 
 final documentsProvider = StateNotifierProvider<DocumentsNotifier, AsyncValue<List<Document>>>((ref) {
+  ref.watch(authProvider.select((state) => state.user?.id));
   final repository = ref.watch(documentsRepositoryProvider);
   return DocumentsNotifier(repository);
 });

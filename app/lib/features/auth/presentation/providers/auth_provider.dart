@@ -37,8 +37,8 @@ class AuthNotifier extends StateNotifier<AuthStateData> {
   Future<void> login(String email, String password) async {
     state = AuthStateData(status: AuthState.loading);
     try {
-      await _repository.login(email.trim(), password);
-      final user = await _repository.getCurrentUser();
+      final userResponse = await _repository.login(email.trim(), password);
+      final user = userResponse ?? await _repository.getCurrentUser();
       state = AuthStateData(status: AuthState.authenticated, user: user);
     } on DioException catch (e) {
       String msg = 'Invalid email or password';
@@ -50,20 +50,16 @@ class AuthNotifier extends StateNotifier<AuthStateData> {
         msg = 'Cannot connect to backend server. Make sure phone is connected via USB or Wi-Fi.';
       }
       state = AuthStateData(status: AuthState.error, errorMessage: msg);
-      await Future.delayed(const Duration(seconds: 4));
-      state = AuthStateData(status: AuthState.unauthenticated);
     } catch (e) {
-      state = AuthStateData(status: AuthState.error, errorMessage: e.toString());
-      await Future.delayed(const Duration(seconds: 4));
-      state = AuthStateData(status: AuthState.unauthenticated);
+      state = AuthStateData(status: AuthState.error, errorMessage: 'An unexpected error occurred: ${e.toString()}');
     }
   }
 
   Future<void> register(String email, String password, String firstName, String lastName) async {
     state = AuthStateData(status: AuthState.loading);
     try {
-      await _repository.register(email.trim(), password, firstName.trim(), lastName.trim());
-      final user = await _repository.getCurrentUser();
+      final userResponse = await _repository.register(email.trim(), password, firstName.trim(), lastName.trim());
+      final user = userResponse ?? await _repository.getCurrentUser();
       state = AuthStateData(status: AuthState.authenticated, user: user);
     } on DioException catch (e) {
       String msg = 'Registration failed';
@@ -74,12 +70,8 @@ class AuthNotifier extends StateNotifier<AuthStateData> {
         msg = 'Cannot connect to backend server.';
       }
       state = AuthStateData(status: AuthState.error, errorMessage: msg);
-      await Future.delayed(const Duration(seconds: 4));
-      state = AuthStateData(status: AuthState.unauthenticated);
     } catch (e) {
-      state = AuthStateData(status: AuthState.error, errorMessage: e.toString());
-      await Future.delayed(const Duration(seconds: 4));
-      state = AuthStateData(status: AuthState.unauthenticated);
+      state = AuthStateData(status: AuthState.error, errorMessage: 'An unexpected error occurred: ${e.toString()}');
     }
   }
 
@@ -87,6 +79,12 @@ class AuthNotifier extends StateNotifier<AuthStateData> {
     state = AuthStateData(status: AuthState.loading);
     await _repository.logout();
     state = AuthStateData(status: AuthState.unauthenticated);
+  }
+
+  void clearError() {
+    if (state.status == AuthState.error) {
+      state = AuthStateData(status: AuthState.unauthenticated);
+    }
   }
 }
 

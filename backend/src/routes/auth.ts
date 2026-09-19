@@ -8,44 +8,51 @@ import { authenticate } from '../middleware/auth.middleware';
 const router = Router();
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+  email: z.string().trim().email('Please enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters long'),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
 });
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
+  email: z.string().trim().email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
 });
 
 // POST /auth/register
 router.post('/register', async (req: Request, res: Response): Promise<any> => {
   try {
     const data = registerSchema.parse(req.body);
+    const email = data.email.toLowerCase();
     
-    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: 'User with this email already exists' });
+      return res.status(400).json({ error: 'An account with this email already exists. Please log in instead.' });
     }
 
     const passwordHash = await bcrypt.hash(data.password, 10);
+    const firstName = data.firstName?.trim() || null;
+    const lastName = data.lastName?.trim() || null;
 
     const user = await prisma.user.create({
       data: {
-        email: data.email,
+        email,
         passwordHash,
         profile: {
           create: {
-            firstName: data.firstName,
-            lastName: data.lastName,
+            firstName,
+            lastName,
           }
         }
       },
+      include: {
+        profile: true
+      }
     });
 
+    const deviceInfo = (req.headers['user-agent'] as string) || 'Mobile App';
     const device = await prisma.device.create({
-      data: { userId: user.id, deviceInfo: req.headers['user-agent'] }
+      data: { userId: user.id, deviceInfo }
     });
 
     const accessToken = generateAccessToken(user.id);
@@ -55,9 +62,21 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
       data: { token: refreshToken, userId: user.id, deviceId: device.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
     });
 
-    return res.status(201).json({ accessToken, refreshToken });
+    return res.status(201).json({ 
+      accessToken, 
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        profile: user.profile
+      }
+    });
   } catch (error: any) {
-    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    if (error instanceof z.ZodError) {
+      const messages = error.errors.map(err => err.message).filter(Boolean).join('. ');
+      return res.status(400).json({ error: messages, details: error.errors });
+    }
+    console.error('Register error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -66,15 +85,21 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
 router.post('/login', async (req: Request, res: Response): Promise<any> => {
   try {
     const data = loginSchema.parse(req.body);
+    const email = data.email.toLowerCase();
     
-    const user = await prisma.user.findUnique({ where: { email: data.email } });
-    if (!user) return res.status(401).json({ error: 'Invalid credentials' });
+    const user = await prisma.user.findUnique({ 
+      where: { email },
+      include: { profile: true }
+    });
+    
+    if (!user) return res.status(401).json({ error: 'Incorrect email or password. Please try again.' });
 
     const isValidPassword = await bcrypt.compare(data.password, user.passwordHash);
-    if (!isValidPassword) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!isValidPassword) return res.status(401).json({ error: 'Incorrect email or password. Please try again.' });
 
+    const deviceInfo = (req.headers['user-agent'] as string) || 'Mobile App';
     const device = await prisma.device.create({
-      data: { userId: user.id, deviceInfo: req.headers['user-agent'] }
+      data: { userId: user.id, deviceInfo }
     });
 
     const accessToken = generateAccessToken(user.id);
@@ -84,9 +109,21 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
       data: { token: refreshToken, userId: user.id, deviceId: device.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
     });
 
-    return res.json({ accessToken, refreshToken });
+    return res.json({ 
+      accessToken, 
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        profile: user.profile
+      }
+    });
   } catch (error: any) {
-    if (error instanceof z.ZodError) return res.status(400).json({ error: error.errors });
+    if (error instanceof z.ZodError) {
+      const messages = error.errors.map(err => err.message).filter(Boolean).join('. ');
+      return res.status(400).json({ error: messages, details: error.errors });
+    }
+    console.error('Login error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -136,6 +173,7 @@ router.post('/logout', authenticate, async (req: Request, res: Response): Promis
     }
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {
+    console.error('Logout error:', error);
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });

@@ -34,7 +34,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      if (authState.status == AuthState.unauthenticated) {
+      if (authState.status == AuthState.unauthenticated || authState.status == AuthState.error) {
         if (isAuthRoute || isSplash) return null;
         return '/login';
       }

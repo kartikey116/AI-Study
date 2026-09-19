@@ -8,6 +8,16 @@ class AppTextField extends StatelessWidget {
   final bool obscureText;
   final TextEditingController? controller;
   final Widget? prefixIcon;
+  final Widget? suffixIcon;
+  final String? errorText;
+  final String? helperText;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final TextCapitalization textCapitalization;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  final FocusNode? focusNode;
+  final bool enabled;
 
   const AppTextField({
     super.key,
@@ -16,6 +26,16 @@ class AppTextField extends StatelessWidget {
     this.obscureText = false,
     this.controller,
     this.prefixIcon,
+    this.suffixIcon,
+    this.errorText,
+    this.helperText,
+    this.keyboardType,
+    this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
+    this.onChanged,
+    this.onSubmitted,
+    this.focusNode,
+    this.enabled = true,
   });
 
   @override
@@ -34,9 +54,19 @@ class AppTextField extends StatelessWidget {
         TextField(
           controller: controller,
           obscureText: obscureText,
+          keyboardType: keyboardType,
+          textInputAction: textInputAction,
+          textCapitalization: textCapitalization,
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+          focusNode: focusNode,
+          enabled: enabled,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: prefixIcon,
+            suffixIcon: suffixIcon,
+            errorText: errorText,
+            helperText: helperText,
           ),
         ),
       ],
