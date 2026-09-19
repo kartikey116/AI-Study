@@ -1,0 +1,318 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  
+  profile       Profile?
+  refreshTokens RefreshToken[]
+  devices       Device[]
+  conversations Conversation[]
+  aiRequestLogs AiRequestLog[]
+  documents     Document[]
+  quizzes       Quiz[]
+  quizAttempts  QuizAttempt[]
+  decks         Deck[]
+  studyPlans    StudyPlan[]
+  topicMasteries TopicMastery[]
+  studySessions StudySession[]
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName String?
+  lastName  String?
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId  String?
+  device    Device?  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  @@index([userId])
+  @@index([token])
+}
+
+model Device {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceInfo    String?        // e.g., "iPhone 13, iOS 15"
+  fcmToken      String?        // For push notifications
+  lastActiveAt  DateTime       @default(now())
+  createdAt     DateTime       @default(now())
+  refreshTokens RefreshToken[]
+
+  @@index([userId])
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  title     String    @default("New Chat")
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  summary   String?
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           Role
+  content        String
+  isBookmarked   Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+enum Role {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model AiRequestLog {
+  id               String   @id @default(uuid())
+  userId           String
+  modelName        String
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  cost             Float    @default(0.0)
+  latencyMs        Int      @default(0)
+  requestType      String
+  createdAt        DateTime @default(now())
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Document {
+  id           String         @id @default(uuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
+  originalName String
+  storagePath  String
+  mimeType     String         @default("application/pdf")
+  sizeBytes    Int            @default(0)
+  pageCount    Int?
+  status       DocumentStatus @default(UPLOADING)
+  errorMessage String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  chunks       DocumentChunk[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model DocumentChunk {
+  id          String   @id @default(uuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId      String
+  pageNumber  Int      @default(1)
+  chapter     String?
+  section     String?
+  chunkIndex  Int
+  text        String
+  contentHash String
+  embedding   Unsupported("vector(3072)")?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([contentHash])
+}
+
+enum DocumentStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+}
+
+// ==========================================
+// PHASE 5: QUIZZES & FLASHCARDS
+// ==========================================
+
+model Quiz {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  subject     String?
+  difficulty  String   @default("Medium") // Easy, Medium, Hard
+  createdAt   DateTime @default(now())
+  
+  questions   Question[]
+  attempts    QuizAttempt[]
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model Question {
+  id            String   @id @default(uuid())
+  quizId        String
+  type          String   // MCQ, TRUE_FALSE, SHORT_ANSWER, SCENARIO
+  text          String
+  options       Json?    // Array of strings for MCQ
+  correctAnswer String
+  explanation   String?
+  contentHash   String   // For duplicate prevention
+  
+  quiz          Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  attempts      QuestionAttempt[]
+
+  @@unique([quizId, contentHash])
+  @@index([quizId])
+}
+
+model QuizAttempt {
+  id         String   @id @default(uuid())
+  quizId     String
+  userId     String
+  score      Float
+  timeTaken  Int      // in seconds
+  createdAt  DateTime @default(now())
+
+  quiz       Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers    QuestionAttempt[]
+
+  @@index([userId])
+  @@index([quizId])
+}
+
+model QuestionAttempt {
+  id            String   @id @default(uuid())
+  quizAttemptId String
+  questionId    String
+  userResponse  String
+  isCorrect     Boolean
+  timeTaken     Int
+
+  attempt       QuizAttempt @relation(fields: [quizAttemptId], references: [id], onDelete: Cascade)
+  question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([quizAttemptId])
+}
+
+model Deck {
+  id        String      @id @default(uuid())
+  userId    String
+  title     String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards     Flashcard[]
+
+  @@index([userId])
+}
+
+model Flashcard {
+  id             String    @id @default(uuid())
+  deckId         String
+  front          String
+  back           String
+  
+  // Spaced Repetition Algorithm
+  nextReviewAt   DateTime  @default(now())
+  lastReviewedAt DateTime?
+  interval       Float     @default(0)
+  easeFactor     Float     @default(2.5)
+  reviewCount    Int       @default(0)
+
+  deck           Deck      @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  @@index([deckId])
+  @@index([nextReviewAt])
+}
+
+// ==========================================
+// PHASE 6: PERSONALIZED STUDY SYSTEM
+// ==========================================
+
+model StudyPlan {
+  id           String      @id @default(uuid())
+  userId       String
+  targetDate   DateTime?
+  subjects     Json        // Array of subjects
+  targetScore  String?
+  createdAt    DateTime    @default(now())
+  
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks        StudyTask[]
+
+  @@index([userId])
+}
+
+model StudyTask {
+  id              String    @id @default(uuid())
+  planId          String
+  title           String
+  date            DateTime
+  durationMinutes Int
+  type            String    // REVISION, QUIZ, READING
+  isCompleted     Boolean   @default(false)
+
+  plan            StudyPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([date])
+}
+
+model TopicMastery {
+  id           String   @id @default(uuid())
+  userId       String
+  topic        String
+  accuracy     Float    @default(0.0)
+  attempts     Int      @default(0)
+  masteryLevel Float    @default(0.0) // 0 to 100
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, topic])
+  @@index([userId])
+}
+
+model StudySession {
+  id              String   @id @default(uuid())
+  userId          String
+  durationMinutes Int
+  type            String   // FOCUS_TIMER
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

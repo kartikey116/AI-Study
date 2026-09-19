@@ -1,0 +1,35 @@
+name: ai_study_companion
+description: AI Study Companion - Flutter Application
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  dio: ^5.11.1
+  file_picker: ^8.1.7
+  flutter:
+    sdk: flutter
+  flutter_markdown: ^0.7.7
+  flutter_math_fork: ^0.7.2
+  flutter_riverpod: ^2.4.9
+  flutter_secure_storage: ^10.3.4
+  freezed_annotation: ^3.1.0
+  go_router: ^13.1.0
+  google_fonts: ^6.1.0
+  http: ^1.6.0
+  json_annotation: ^4.12.0
+
+  syncfusion_flutter_pdfviewer: ^28.1.33 # Modern lightweight icons
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.16.1
+  freezed: ^4.0.2
+  json_serializable: ^6.14.1
+
+flutter:
+  uses-material-design: true
