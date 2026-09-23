@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_spacing.dart';
 import '../theme/app_radius.dart';
 
 class AppButton extends StatelessWidget {
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   final bool isPrimary;
   final bool isLoading;
 
   const AppButton({
     super.key,
     required this.text,
-    required this.onPressed,
+    this.onPressed,
     this.isPrimary = true,
     this.isLoading = false,
   });
@@ -34,7 +33,7 @@ class AppButton extends StatelessWidget {
           shadowColor: Colors.transparent,
           side: isPrimary ? BorderSide.none : const BorderSide(color: AppColors.primary),
         ),
-        onPressed: isLoading ? null : onPressed,
+        onPressed: (isLoading || onPressed == null) ? null : onPressed,
         child: isLoading
             ? const SizedBox(
                 height: 20,

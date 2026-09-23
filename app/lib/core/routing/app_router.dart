@@ -22,11 +22,19 @@ import '../../features/flashcard/presentation/screens/flashcard_screen.dart';
 import '../../core/layout/main_layout.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final listenable = ValueNotifier<bool>(false);
+  
+  // Trigger GoRouter to re-evaluate its redirect logic whenever auth state changes
+  ref.listen(authProvider, (previous, next) {
+    listenable.value = !listenable.value;
+  });
 
   return GoRouter(
     initialLocation: '/',
+    refreshListenable: listenable,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
+      
       final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register' || state.matchedLocation == '/onboarding';
       final isSplash = state.matchedLocation == '/';
 

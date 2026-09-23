@@ -39,18 +39,21 @@ class AuthNotifier extends StateNotifier<AuthStateData> {
     try {
       final userResponse = await _repository.login(email.trim(), password);
       final user = userResponse ?? await _repository.getCurrentUser();
+      if (!mounted) return;
       state = AuthStateData(status: AuthState.authenticated, user: user);
     } on DioException catch (e) {
+      if (!mounted) return;
       String msg = 'Invalid email or password';
       if (e.response?.data is Map && e.response?.data['error'] != null) {
         msg = e.response?.data['error'].toString() ?? msg;
       } else if (e.type == DioExceptionType.connectionTimeout ||
                  e.type == DioExceptionType.connectionError ||
                  e.type == DioExceptionType.receiveTimeout) {
-        msg = 'Cannot connect to backend server. Make sure phone is connected via USB or Wi-Fi.';
+        msg = 'Cannot connect to server. Make sure your phone and laptop are on the same Wi-Fi.';
       }
       state = AuthStateData(status: AuthState.error, errorMessage: msg);
     } catch (e) {
+      if (!mounted) return;
       state = AuthStateData(status: AuthState.error, errorMessage: 'An unexpected error occurred: ${e.toString()}');
     }
   }
@@ -60,17 +63,20 @@ class AuthNotifier extends StateNotifier<AuthStateData> {
     try {
       final userResponse = await _repository.register(email.trim(), password, firstName.trim(), lastName.trim());
       final user = userResponse ?? await _repository.getCurrentUser();
+      if (!mounted) return;
       state = AuthStateData(status: AuthState.authenticated, user: user);
     } on DioException catch (e) {
+      if (!mounted) return;
       String msg = 'Registration failed';
       if (e.response?.data is Map && e.response?.data['error'] != null) {
         msg = e.response?.data['error'].toString() ?? msg;
       } else if (e.type == DioExceptionType.connectionTimeout ||
                  e.type == DioExceptionType.connectionError) {
-        msg = 'Cannot connect to backend server.';
+        msg = 'Cannot connect to server. Make sure your phone and laptop are on the same Wi-Fi.';
       }
       state = AuthStateData(status: AuthState.error, errorMessage: msg);
     } catch (e) {
+      if (!mounted) return;
       state = AuthStateData(status: AuthState.error, errorMessage: 'An unexpected error occurred: ${e.toString()}');
     }
   }
@@ -81,6 +87,15 @@ class AuthNotifier extends StateNotifier<AuthStateData> {
     state = AuthStateData(status: AuthState.unauthenticated);
   }
 
+  /// Call this when entering the login/register screen to wipe any stale error
+  /// from a previous attempt (e.g. user went back and came back).
+  void resetForScreen() {
+    if (state.status == AuthState.error || state.status == AuthState.loading) {
+      state = AuthStateData(status: AuthState.unauthenticated);
+    }
+  }
+
+  /// Clear error state — always resets to unauthenticated regardless of current status.
   void clearError() {
     if (state.status == AuthState.error) {
       state = AuthStateData(status: AuthState.unauthenticated);

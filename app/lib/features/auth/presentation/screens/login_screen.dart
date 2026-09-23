@@ -23,6 +23,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _passwordError;
 
   @override
+  void initState() {
+    super.initState();
+    // Clear any stale error/loading state from a previous attempt
+    // so the user doesn't see an old error when they come back to this screen.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(authProvider.notifier).resetForScreen();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
@@ -30,6 +42,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _validateAndSubmit() {
+    // Dismiss keyboard
+    FocusScope.of(context).unfocus();
+
     setState(() {
       _emailError = null;
       _passwordError = null;
@@ -41,15 +56,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     bool isValid = true;
 
     if (email.isEmpty) {
-      _emailError = 'Email is required';
+      setState(() => _emailError = 'Email is required');
       isValid = false;
     } else if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
-      _emailError = 'Please enter a valid email address';
+      setState(() => _emailError = 'Please enter a valid email address');
       isValid = false;
     }
 
     if (password.isEmpty) {
-      _passwordError = 'Password is required';
+      setState(() => _passwordError = 'Password is required');
       isValid = false;
     }
 
@@ -62,15 +77,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final isLoading = authState.status == AuthState.loading;
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new),
-          onPressed: () {
-            ref.read(authProvider.notifier).clearError();
-            context.pop();
-          },
+          onPressed: isLoading
+              ? null // Disable back button while loading to prevent mid-request cancellation issues
+              : () {
+                  ref.read(authProvider.notifier).clearError();
+                  context.pop();
+                },
         ),
       ),
       body: SafeArea(
@@ -84,15 +102,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: AppSpacing.sm),
               Text('Ready to study today?', style: AppTypography.bodyLarge),
               const SizedBox(height: AppSpacing.xxl),
-              
+
+              // Error banner — only shown when status is error
               if (authState.status == AuthState.error && authState.errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withOpacity(0.5)),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
                   ),
                   child: Row(
                     children: [
@@ -103,6 +122,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           authState.errorMessage!,
                           style: AppTypography.bodyMedium.copyWith(color: Colors.red[700]),
                         ),
+                      ),
+                      // Tap X to dismiss the error banner manually
+                      GestureDetector(
+                        onTap: () => ref.read(authProvider.notifier).clearError(),
+                        child: const Icon(Icons.close, color: Colors.red, size: 18),
                       ),
                     ],
                   ),
@@ -116,10 +140,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
                 prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMuted),
-                enabled: authState.status != AuthState.loading,
+                enabled: !isLoading,
                 onChanged: (_) {
                   if (_emailError != null) setState(() => _emailError = null);
-                  ref.read(authProvider.notifier).clearError();
+                  if (authState.status == AuthState.error) {
+                    ref.read(authProvider.notifier).clearError();
+                  }
                 },
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -131,7 +157,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 errorText: _passwordError,
                 textInputAction: TextInputAction.done,
                 prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMuted),
-                enabled: authState.status != AuthState.loading,
+                enabled: !isLoading,
                 suffixIcon: IconButton(
                   icon: Icon(
                     _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -141,31 +167,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 onChanged: (_) {
                   if (_passwordError != null) setState(() => _passwordError = null);
-                  ref.read(authProvider.notifier).clearError();
+                  if (authState.status == AuthState.error) {
+                    ref.read(authProvider.notifier).clearError();
+                  }
                 },
-                onSubmitted: (_) => _validateAndSubmit(),
+                onSubmitted: (_) => isLoading ? null : _validateAndSubmit(),
               ),
-              
+
               const SizedBox(height: AppSpacing.xxl),
               AppButton(
-                text: authState.status == AuthState.loading ? 'Logging in...' : 'Log In',
-                onPressed: authState.status == AuthState.loading ? () {} : _validateAndSubmit,
+                text: isLoading ? 'Logging in...' : 'Log In',
+                // null disables the button properly (greyed out) while loading
+                onPressed: isLoading ? null : _validateAndSubmit,
               ),
-              
+
               const SizedBox(height: AppSpacing.xl),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text("Don't have an account? ", style: AppTypography.bodyMedium),
                   GestureDetector(
-                    onTap: () {
-                      ref.read(authProvider.notifier).clearError();
-                      context.go('/register');
-                    },
+                    onTap: isLoading
+                        ? null
+                        : () {
+                            ref.read(authProvider.notifier).clearError();
+                            context.go('/register');
+                          },
                     child: Text(
                       'Sign Up',
                       style: AppTypography.bodyMedium.copyWith(
-                        color: AppColors.primary,
+                        color: isLoading ? AppColors.textMuted : AppColors.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
