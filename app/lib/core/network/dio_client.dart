@@ -2,10 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'auth_interceptor.dart';
 
-// 127.0.0.1  → iOS Simulator only
-// 10.0.2.2   → Android Emulator only
-// 192.168.x.x → Physical device (must match your laptop's Wi-Fi IP)
-const String baseUrl = 'http://192.168.1.36:3000/api/v1';
+// Using Localtunnel to bypass Windows Firewall
+const String baseUrl = 'https://able-eleven-dirt-ask.trycloudflare.com/api/v1';
 
 class DioClient {
   static final DioClient _instance = DioClient._internal();
@@ -23,6 +21,9 @@ class DioClient {
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         sendTimeout: const Duration(seconds: 30),
+        headers: {
+          'Bypass-Tunnel-Reminder': 'true', // Bypasses localtunnel warning page
+        },
       ),
     );
 

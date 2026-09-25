@@ -668,7 +668,7 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                         // Initial welcome bubble matching the design screenshot
                         AiMessageBubble(
                           text: "Hi $firstName! 👋\nI'm your AI study assistant. I can help you understand concepts, create notes, generate quizzes, and more. What would you like to learn today?",
-                          timestamp: '9:41 AM',
+                          timestamp: TimeOfDay.now().format(context),
                         ),
                         if (chatState.isLoading && (chatState.streamingText?.isEmpty ?? true))
                           const AiTypingIndicator()

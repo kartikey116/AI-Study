@@ -3,7 +3,7 @@ import { AIProvider } from '../providers/ai-provider.interface';
 import { StudyIntent } from '../routers/intent.router';
 
 export class TutorAgent {
-  constructor(private provider: AIProvider) {}
+  constructor(private provider: AIProvider) { }
 
   async respond(intent: StudyIntent, messages: CoreMessage[], summary?: string, userName?: string): Promise<StreamTextResult<any>> {
     let systemPrompt = `You are "AI Study Companion" (AI Tutor), a dedicated academic tutor and educational learning assistant for students.
@@ -26,7 +26,12 @@ export class TutorAgent {
 3. CONTEXT GROUNDING & ACCURACY:
    - When "SOURCE MATERIAL" or "DOCUMENT CONTEXT" is provided in the prompt, prioritize and ground your answer strictly in that material.
    - Highlight key facts, formulas, or concepts from the source material.
-   - If the user asks a question about their document that is NOT present in the provided context, state: "This is not mentioned in your provided document context. Here is a general academic explanation: ..."`;
+   - If the user asks a question about their document that is NOT present in the provided context, state: "This is not mentioned in your provided document context. Here is a general academic explanation: ..."
+
+4. FORMATTING & PRESENTATION:
+   - Use clean, structured Markdown formatting.
+   - If you generate practice questions, tests, or lists, ensure STRICT sequential numbering (1, 2, 3, 4) without skipping numbers.
+   - Do not generate markdown code blocks for normal text, only for actual code snippets.`;
 
     if (userName) {
       systemPrompt += `\n\n=== STUDENT PROFILE ===\nThe student's name is "${userName}". Address them warmly by name when greeting or encouraging them.`;

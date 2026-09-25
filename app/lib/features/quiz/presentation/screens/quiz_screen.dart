@@ -135,8 +135,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
             }
 
             final q = questions[_currentIndex];
-            final isMCQ = q['type'] == 'MCQ';
-            final options = isMCQ ? List<String>.from(q['options']) : ['True', 'False'];
+            final qType = q['type'] as String? ?? 'MCQ';
+            final rawOptions = q['options'];
+            final List<String> options;
+            if (rawOptions != null && (rawOptions as List).isNotEmpty) {
+              // Use stored options — MCQ always has 4 here
+              options = List<String>.from(rawOptions);
+            } else if (qType == 'TRUE_FALSE') {
+              options = ['True', 'False'];
+            } else {
+              options = [];
+            }
+            final isMCQ = qType == 'MCQ' || qType == 'SCENARIO';
             final letters = ['A', 'B', 'C', 'D', 'E'];
 
             return Column(

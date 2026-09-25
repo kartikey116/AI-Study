@@ -188,14 +188,25 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
       }).catch(console.error);
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Chat error:', error);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Internal server error' });
-    } else {
-      res.write(`data: ${JSON.stringify({ type: 'error', message: 'Internal server error' })}\n\n`);
-      res.end();
+    let errorMsg = 'An unexpected error occurred while generating the response.';
+    if (error.statusCode === 429 || error.message?.includes('overloaded')) {
+      errorMsg = 'The AI service is currently overloaded. Please try again in a moment.';
+    } else if (error.statusCode >= 400 && error.statusCode < 500) {
+      errorMsg = 'The AI service encountered an error processing your request.';
     }
+
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      if (typeof (res as any).flushHeaders === 'function') {
+        (res as any).flushHeaders();
+      }
+    }
+    res.write(`data: ${JSON.stringify({ type: 'error', message: errorMsg })}\n\n`);
+    res.end();
   }
 });
 

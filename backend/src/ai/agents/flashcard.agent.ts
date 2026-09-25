@@ -45,12 +45,25 @@ Back: A concise, accurate answer or definition.
 
 ${contextText ? `=== SOURCE MATERIAL ===\n${contextText}\n========================` : ''}`;
 
-    const { object: generatedCards } = await generateObject({
-      model: google('gemini-3.8-flash'),
-      schema: z.object({ cards: z.array(flashcardSchema) }),
-      system: systemPrompt,
-      prompt: 'Generate the flashcards now.',
-    });
+    let generatedCards;
+    try {
+      const result = await generateObject({
+        model: google('gemini-3.8-flash'),
+        schema: z.object({ cards: z.array(flashcardSchema) }),
+        system: systemPrompt,
+        prompt: 'Generate the flashcards now.',
+      });
+      generatedCards = result.object;
+    } catch (e: any) {
+      console.error('Flashcard Generation AI Error:', e);
+      if (e.statusCode === 429 || e.message?.includes('overloaded')) {
+        throw new Error('The AI service is currently overloaded. Please try again in a moment.');
+      }
+      if (e.statusCode === 400) {
+        throw new Error('The AI service failed to generate the required format. Please try again.');
+      }
+      throw new Error('An unexpected error occurred while generating flashcards. Please try again.');
+    }
 
     const deck = await prisma.deck.create({
       data: {

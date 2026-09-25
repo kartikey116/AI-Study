@@ -33,12 +33,25 @@ They can study ${hoursPerDay} hours per day.
 Generate a list of exactly 7 study tasks for the upcoming week.
 Mix REVISION, QUIZ, and READING.`;
 
-    const { object: planData } = await generateObject({
-      model: google('gemini-3.8-flash'),
-      schema: z.object({ tasks: z.array(studyTaskSchema) }),
-      system: systemPrompt,
-      prompt: 'Generate the 7-day plan.',
-    });
+    let planData;
+    try {
+      const result = await generateObject({
+        model: google('gemini-3.8-flash'),
+        schema: z.object({ tasks: z.array(studyTaskSchema) }),
+        system: systemPrompt,
+        prompt: 'Generate the 7-day plan.',
+      });
+      planData = result.object;
+    } catch (e: any) {
+      console.error('Planner AI Error:', e);
+      if (e.statusCode === 429 || e.message?.includes('overloaded')) {
+        throw new Error('The AI service is currently overloaded. Please try again in a moment.');
+      }
+      if (e.statusCode === 400) {
+        throw new Error('The AI service failed to generate the required format. Please try again.');
+      }
+      throw new Error('An unexpected error occurred while generating the study plan. Please try again.');
+    }
 
     const plan = await prisma.studyPlan.create({
       data: {
@@ -88,11 +101,16 @@ Mix REVISION, QUIZ, and READING.`;
       const prompt = `The user is studying. Their weakest topic is currently "${weakest.topic}" at ${Math.round(weakest.masteryLevel)}% mastery.
       Provide a short, motivating 1-sentence tip on how to improve this topic.`;
 
-      const { text } = await generateText({
-        model: google('gemini-3.8-flash'),
-        prompt,
-      });
-      tip = text.trim();
+      try {
+        const { text } = await generateText({
+          model: google('gemini-3.8-flash'),
+          prompt,
+        });
+        tip = text.trim();
+      } catch (e) {
+        console.error('Tip Generation AI Error:', e);
+        tip = "Keep studying to improve your weakest topic!";
+      }
     } else if (docsCount > 0) {
       nextAction = "Take a Quiz";
       tip = "Try generating a quiz from your uploaded documents to test your knowledge!";

@@ -37,11 +37,15 @@ class ChatRepository {
 
       final stream = response.data.stream as Stream<List<int>>;
       
+      String buffer = '';
       await for (final chunk in stream) {
-        final decodedChunk = utf8.decode(chunk);
-        final lines = decodedChunk.split('\n\n');
+        buffer += utf8.decode(chunk);
         
-        for (final line in lines) {
+        int nextIndex;
+        while ((nextIndex = buffer.indexOf('\n\n')) != -1) {
+          final line = buffer.substring(0, nextIndex);
+          buffer = buffer.substring(nextIndex + 2);
+          
           if (line.startsWith('data: ')) {
             final dataStr = line.substring(6);
             if (dataStr.trim().isEmpty) continue;
@@ -50,7 +54,7 @@ class ChatRepository {
               final Map<String, dynamic> data = jsonDecode(dataStr);
               yield data;
             } catch (e) {
-              // Ignore malformed JSON during streaming cuts
+              // Ignore invalid JSON (should rarely happen now with proper buffering)
             }
           }
         }
