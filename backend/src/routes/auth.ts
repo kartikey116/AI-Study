@@ -4,23 +4,28 @@ import { z } from 'zod';
 import { prisma } from '../utils/db.util';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.util';
 import { authenticate } from '../middleware/auth.middleware';
+import { authLimiter, refreshLimiter } from '../middleware/rate-limit.middleware';
+import { personName } from '../utils/validation.util';
 
 const router = Router();
 
+// Empty strings from the app's optional fields are treated as "not provided"
+const optionalName = z.preprocess(v => (typeof v === 'string' && v.trim() === '' ? undefined : v), personName.optional());
+
 const registerSchema = z.object({
-  email: z.string().trim().email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters long'),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  email: z.string().trim().max(254).email('Please enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters long').max(128, 'Password must be at most 128 characters'),
+  firstName: optionalName,
+  lastName: optionalName,
 });
 
 const loginSchema = z.object({
-  email: z.string().trim().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Password is required'),
+  email: z.string().trim().max(254).email('Please enter a valid email address'),
+  password: z.string().min(1, 'Password is required').max(128),
 });
 
 // POST /auth/register
-router.post('/register', async (req: Request, res: Response): Promise<any> => {
+router.post('/register', authLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
     const data = registerSchema.parse(req.body);
     const email = data.email.toLowerCase();
@@ -82,7 +87,7 @@ router.post('/register', async (req: Request, res: Response): Promise<any> => {
 });
 
 // POST /auth/login
-router.post('/login', async (req: Request, res: Response): Promise<any> => {
+router.post('/login', authLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
     const data = loginSchema.parse(req.body);
     const email = data.email.toLowerCase();
@@ -129,16 +134,16 @@ router.post('/login', async (req: Request, res: Response): Promise<any> => {
 });
 
 // POST /auth/refresh
-router.post('/refresh', async (req: Request, res: Response): Promise<any> => {
+router.post('/refresh', refreshLimiter, async (req: Request, res: Response): Promise<any> => {
   try {
     const { refreshToken } = req.body;
-    if (!refreshToken) return res.status(400).json({ error: 'Refresh token required' });
+    if (typeof refreshToken !== 'string' || !refreshToken) return res.status(400).json({ error: 'Refresh token required' });
 
     const decoded = verifyRefreshToken(refreshToken);
-    
-    // Check if token exists in DB and is not revoked
+
+    // Check if token exists in DB, is not revoked, and belongs to the user it was signed for
     const storedToken = await prisma.refreshToken.findUnique({ where: { token: refreshToken } });
-    if (!storedToken || storedToken.revokedAt || storedToken.expiresAt < new Date()) {
+    if (!storedToken || storedToken.userId !== decoded.userId || storedToken.revokedAt || storedToken.expiresAt < new Date()) {
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
@@ -165,11 +170,12 @@ router.post('/refresh', async (req: Request, res: Response): Promise<any> => {
 router.post('/logout', authenticate, async (req: Request, res: Response): Promise<any> => {
   try {
     const { refreshToken } = req.body;
-    if (refreshToken) {
-      await prisma.refreshToken.update({
-        where: { token: refreshToken },
+    if (typeof refreshToken === 'string' && refreshToken) {
+      // ISOLATION: a user can only revoke their own tokens
+      await prisma.refreshToken.updateMany({
+        where: { token: refreshToken, userId: req.userId! },
         data: { revokedAt: new Date() }
-      }).catch(() => {}); // ignore if not found
+      });
     }
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {

@@ -1,8 +1,12 @@
 import { embed, embedMany } from 'ai';
 import { google } from '@ai-sdk/google';
 
-const EMBEDDING_MODEL = google.textEmbeddingModel('gemini-embedding-2');
-const EMBEDDING_DIMS = 3072;
+// 768 dims keeps us under pgvector's 2000-dim HNSW limit; gemini-embedding-2
+// auto-normalizes truncated outputs, so no manual L2 normalization is needed.
+const EMBEDDING_DIMS = 768;
+const EMBEDDING_MODEL = google.textEmbeddingModel('gemini-embedding-2', {
+  outputDimensionality: EMBEDDING_DIMS,
+});
 
 export async function embedText(text: string): Promise<number[]> {
   const { embedding } = await embed({

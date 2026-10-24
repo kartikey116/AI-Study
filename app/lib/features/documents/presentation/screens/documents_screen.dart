@@ -7,6 +7,8 @@ import 'package:file_picker/file_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/components/empty_state.dart';
 import '../providers/documents_provider.dart';
 import '../../../flashcard/presentation/providers/flashcard_provider.dart';
 import '../../data/models/document_model.dart';
@@ -56,47 +58,60 @@ class DocumentsScreen extends ConsumerWidget {
     final docsState = ref.watch(documentsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.paper,
       appBar: AppBar(
-        title: Text('My Documents', style: AppTypography.heading3),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: false,
+        title: Text('Documents', style: AppTypography.heading2),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(1),
+          child: Divider(height: 1),
+        ),
       ),
       body: docsState.when(
         data: (docs) {
           if (docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.description, size: 64, color: AppColors.textMuted),
-                  const SizedBox(height: AppSpacing.md),
-                  Text('No documents yet', style: AppTypography.bodyLarge),
-                ],
-              ),
+            return EmptyState(
+              icon: Icons.upload_file_rounded,
+              title: 'No documents yet',
+              message: 'Upload a PDF of your notes or textbook to ask questions, build quizzes and make flashcards from it.',
+              buttonText: 'Upload a PDF',
+              onAction: () => _pickAndUpload(context, ref),
             );
           }
           return RefreshIndicator(
             onRefresh: () => ref.read(documentsProvider.notifier).fetchDocuments(),
+            color: AppColors.ink,
             child: ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              itemCount: docs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, 96),
+              itemCount: docs.length + 1,
+              separatorBuilder: (_, index) => SizedBox(height: index == 0 ? AppSpacing.sm : AppSpacing.md),
               itemBuilder: (context, index) {
-                final doc = docs[index];
+                if (index == 0) {
+                  final ready = docs.where((d) => d.status == 'READY').length;
+                  return Text(
+                    'LIBRARY · ${docs.length} PDF${docs.length == 1 ? '' : 'S'} · $ready READY',
+                    style: AppTypography.label,
+                  );
+                }
+                final doc = docs[index - 1];
                 return _DocumentCard(document: doc);
               },
             ),
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
+        error: (e, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Text('Error: $e', style: AppTypography.bodyMedium, textAlign: TextAlign.center),
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _pickAndUpload(context, ref),
-        icon: const Icon(Icons.cloud_upload),
-        label: const Text('Upload PDF'),
+        backgroundColor: AppColors.ink,
+        foregroundColor: AppColors.onInk,
+        icon: const Icon(Icons.upload_file_rounded, color: AppColors.highlighter),
+        label: Text('Upload PDF', style: AppTypography.button),
       ),
     );
   }
@@ -112,15 +127,9 @@ class _DocumentCard extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.line),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -130,12 +139,22 @@ class _DocumentCard extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 44,
+                height: 52,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.paper,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  border: Border.all(color: AppColors.lineStrong),
                 ),
-                child: const Icon(Icons.description_rounded, color: AppColors.primary, size: 22),
+                child: Text(
+                  'PDF',
+                  style: AppTypography.label.copyWith(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+                ),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -144,14 +163,14 @@ class _DocumentCard extends ConsumerWidget {
                   children: [
                     Text(
                       document.name,
-                      style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.bold),
+                      style: AppTypography.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
-                      '${(document.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB • ${document.pageCount ?? 0} Pages',
-                      style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary, fontSize: 12),
+                      '${(document.sizeBytes / 1024 / 1024).toStringAsFixed(1)} MB · ${document.pageCount ?? 0} pp',
+                      style: AppTypography.mono.copyWith(fontSize: 12, color: AppColors.textMuted),
                     ),
                   ],
                 ),
@@ -164,16 +183,16 @@ class _DocumentCard extends ConsumerWidget {
           // Action Buttons: Spanned evenly across card width when READY
           if (document.status == 'READY') ...[
             const SizedBox(height: AppSpacing.md),
-            const Divider(height: 1, color: Color(0xFFF1F5F9)),
-            const SizedBox(height: AppSpacing.sm),
+            const Divider(height: 1),
+            const SizedBox(height: AppSpacing.md),
             Row(
               children: [
                 Expanded(
                   child: _DocActionButton(
                     icon: Icons.chat_bubble_outline_rounded,
-                    label: 'Ask AI',
-                    color: const Color(0xFF6366F1),
-                    bgColor: const Color(0xFFEEF2FF),
+                    label: 'Ask',
+                    color: AppColors.onInk,
+                    bgColor: AppColors.ink,
                     onTap: () => context.push('/chat?documentId=${document.id}'),
                   ),
                 ),
@@ -183,7 +202,7 @@ class _DocumentCard extends ConsumerWidget {
                     icon: Icons.quiz_outlined,
                     label: 'Quiz',
                     color: AppColors.primary,
-                    bgColor: const Color(0xFFF3E8FF),
+                    bgColor: AppColors.primarySoft,
                     onTap: () => context.push('/quiz-setup?documentId=${document.id}'),
                   ),
                 ),
@@ -192,8 +211,8 @@ class _DocumentCard extends ConsumerWidget {
                   child: _DocActionButton(
                     icon: Icons.style_outlined,
                     label: 'Cards',
-                    color: const Color(0xFFD97706),
-                    bgColor: const Color(0xFFFEF3C7),
+                    color: AppColors.ink,
+                    bgColor: AppColors.highlighterSoft,
                     onTap: () => _handleFlashcards(context, ref, document),
                   ),
                 ),
@@ -211,16 +230,12 @@ class _DocumentCard extends ConsumerWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Generate Flashcards'),
+        title: const Text('Generate flashcards'),
         content: Text('Generate 10 spaced-repetition flashcards from "${document.name}"?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFD97706),
-              foregroundColor: Colors.white,
-            ),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(96, 44)),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Generate'),
           ),
@@ -239,9 +254,9 @@ class _DocumentCard extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: Color(0xFFD97706)),
+                  CircularProgressIndicator(color: AppColors.ink),
                   SizedBox(height: 16),
-                  Text('Generating Flashcards with AI...'),
+                  Text('Writing your flashcards…'),
                 ],
               ),
             ),
@@ -277,31 +292,36 @@ class _DocumentCard extends ConsumerWidget {
 
     switch (status) {
       case 'READY':
-        bgColor = Colors.green.withOpacity(0.1);
-        textColor = Colors.green;
+        bgColor = AppColors.successSoft;
+        textColor = AppColors.success;
         break;
       case 'PROCESSING':
-        bgColor = Colors.orange.withOpacity(0.1);
-        textColor = Colors.orange;
+        bgColor = AppColors.warningSoft;
+        textColor = AppColors.warning;
         break;
       case 'FAILED':
-        bgColor = Colors.red.withOpacity(0.1);
-        textColor = Colors.red;
+        bgColor = AppColors.errorSoft;
+        textColor = AppColors.error;
         break;
       default: // UPLOADING
-        bgColor = Colors.blue.withOpacity(0.1);
-        textColor = Colors.blue;
+        bgColor = AppColors.infoSoft;
+        textColor = AppColors.info;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       child: Text(
         status,
-        style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+        style: AppTypography.label.copyWith(
+          color: textColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+        ),
       ),
     );
   }
@@ -324,29 +344,29 @@ class _DocActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 15, color: color),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: SizedBox(
+          height: 44,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: color == AppColors.onInk ? AppColors.highlighter : color),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

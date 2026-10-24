@@ -87,9 +87,10 @@ ${contextText ? `=== SOURCE MATERIAL ===\n${contextText}\n======================
    * Applies the SuperMemo-2 (SM-2) algorithm to update a flashcard's schedule.
    * @param quality 0-5 (0 = complete blackout, 3 = hard, 4 = good, 5 = perfect)
    */
-  async reviewCard(cardId: string, quality: number) {
-    const card = await prisma.flashcard.findUnique({ where: { id: cardId } });
-    if (!card) throw new Error('Flashcard not found');
+  /** Returns null when the card doesn't exist or belongs to another user's deck. */
+  async reviewCard(userId: string, cardId: string, quality: number) {
+    const card = await prisma.flashcard.findFirst({ where: { id: cardId, deck: { userId } } });
+    if (!card) return null;
 
     let { interval, easeFactor, reviewCount } = card;
 
@@ -114,7 +115,7 @@ ${contextText ? `=== SOURCE MATERIAL ===\n${contextText}\n======================
     nextReviewAt.setDate(nextReviewAt.getDate() + interval);
 
     const updatedCard = await prisma.flashcard.update({
-      where: { id: cardId },
+      where: { id: card.id },
       data: {
         interval,
         easeFactor,

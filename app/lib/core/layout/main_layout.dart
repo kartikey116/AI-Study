@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
-
+import '../theme/app_radius.dart';
+import '../theme/app_typography.dart';
 
 class MainLayout extends StatelessWidget {
   final Widget child;
@@ -16,7 +17,7 @@ class MainLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0EEFF),
+      backgroundColor: AppColors.paper,
       body: child,
       bottomNavigationBar: _BottomNav(currentIndex: currentIndex),
     );
@@ -29,22 +30,13 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Container(
-      height: 72 + MediaQuery.of(context).padding.bottom,
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.07),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
+      height: 68 + bottomInset,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.line)),
       ),
       child: Row(
         children: [
@@ -62,33 +54,40 @@ class _BottomNav extends StatelessWidget {
             child: _NavItem(
               icon: Icons.calendar_month_outlined,
               activeIcon: Icons.calendar_month_rounded,
-              label: 'Schedule',
+              label: 'Plan',
               index: 1,
               currentIndex: currentIndex,
               onTap: () => context.go('/study-plan'),
             ),
           ),
-          // Centre FAB
-          GestureDetector(
-            onTap: () => context.go('/chat'),
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: const BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x558B5CF6),
-                    blurRadius: 14,
-                    offset: Offset(0, 5),
+          // Centre "Ask" tile
+          Expanded(
+            child: Semantics(
+              button: true,
+              selected: currentIndex == 2,
+              label: 'Ask the study assistant',
+              child: GestureDetector(
+                onTap: () => context.go('/chat'),
+                behavior: HitTestBehavior.opaque,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    width: 52,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: currentIndex == 2 ? AppColors.highlighter : AppColors.ink,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      border: Border.all(color: AppColors.ink, width: 1.5),
+                      boxShadow: currentIndex == 2 ? AppShadows.hardSmall : null,
+                    ),
+                    child: Icon(
+                      Icons.edit_note_rounded,
+                      color: currentIndex == 2 ? AppColors.ink : AppColors.highlighter,
+                      size: 26,
+                    ),
                   ),
-                ],
-              ),
-              child: Icon(
-                currentIndex == 2 ? Icons.auto_awesome : Icons.auto_awesome_outlined,
-                color: Colors.white,
-                size: 24,
+                ),
               ),
             ),
           ),
@@ -96,7 +95,7 @@ class _BottomNav extends StatelessWidget {
             child: _NavItem(
               icon: Icons.description_outlined,
               activeIcon: Icons.description_rounded,
-              label: 'Documents',
+              label: 'Docs',
               index: 3,
               currentIndex: currentIndex,
               onTap: () => context.go('/documents'),
@@ -104,9 +103,9 @@ class _BottomNav extends StatelessWidget {
           ),
           Expanded(
             child: _NavItem(
-              icon: Icons.settings_outlined,
-              activeIcon: Icons.settings_rounded,
-              label: 'Settings',
+              icon: Icons.person_outline_rounded,
+              activeIcon: Icons.person_rounded,
+              label: 'Profile',
               index: 4,
               currentIndex: currentIndex,
               onTap: () => context.go('/profile'),
@@ -138,31 +137,38 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool selected = index == currentIndex;
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+    final color = selected ? AppColors.ink : AppColors.textMuted;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              selected ? activeIcon : icon,
-              color: selected ? AppColors.primary : AppColors.textMuted,
-              size: 22,
-            ),
-            const SizedBox(height: 3),
-            FittedBox(
-              fit: BoxFit.scaleDown,
+            Icon(selected ? activeIcon : icon, color: color, size: 22),
+            const SizedBox(height: 4),
+            // Label sits on a highlighter stroke when active
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: selected ? AppColors.highlighter : Colors.transparent,
+                borderRadius: BorderRadius.circular(3),
+              ),
               child: Text(
                 label,
                 maxLines: 1,
                 softWrap: false,
-                style: TextStyle(
+                style: AppTypography.bodySmall.copyWith(
                   fontSize: 11,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  color: selected ? AppColors.primary : AppColors.textMuted,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: color,
                 ),
               ),
             ),

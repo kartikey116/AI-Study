@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/layout/main_layout.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../documents/presentation/providers/documents_provider.dart';
@@ -44,11 +45,11 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
     return MainLayout(
       currentIndex: 1,
       child: Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.paper,
         appBar: AppBar(
-          backgroundColor: Colors.transparent,
+          backgroundColor: AppColors.paper,
           elevation: 0,
-          title: Text('Study Schedule', style: AppTypography.heading2),
+          title: Text('Study Plan', style: AppTypography.heading2),
           centerTitle: false,
           actions: [
             IconButton(
@@ -60,7 +61,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
               data: (plan) {
                 if (plan == null) return const SizedBox.shrink();
                 return IconButton(
-                  icon: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary),
+                  icon: const Icon(Icons.add_rounded, color: AppColors.ink),
                   tooltip: 'Create New Plan',
                   onPressed: () => _showCreatePlanBottomSheet(context),
                 );
@@ -71,13 +72,13 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
           ],
         ),
         body: planAsync.when(
-          loading: () => const Center(
+          loading: () => Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Loading your study schedule...', style: TextStyle(color: Colors.grey)),
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text('Loading your study schedule...', style: AppTypography.bodyMedium),
               ],
             ),
           ),
@@ -116,113 +117,67 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
   Widget _buildEmptyState(BuildContext context) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Illustration circle
-          Center(
-            child: Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.event_note_rounded, size: 48, color: AppColors.primary),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.lg),
+          const SizedBox(height: AppSpacing.md),
+          Text('NO ACTIVE PLAN', style: AppTypography.label),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            'No Active Study Plan',
-            style: AppTypography.heading2,
-            textAlign: TextAlign.center,
+            'Plan the week before the week plans you.',
+            style: AppTypography.heading1,
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             'Let AI build a personalized 7-day revision roadmap based on your exam deadline and course materials.',
             style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.xl),
 
           // "How It Works" Card
           Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.sm),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.line),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 8),
-                    Text('How AI Study Planning Works', style: AppTypography.heading3.copyWith(fontSize: 16)),
-                  ],
-                ),
-                const Divider(height: 24),
+                Text('HOW IT WORKS', style: AppTypography.label),
+                const SizedBox(height: AppSpacing.sm),
                 _buildHowItWorksItem(
-                  icon: Icons.flag_rounded,
-                  color: const Color(0xFF2563EB),
-                  title: '1. Set Your Target',
+                  step: '01',
+                  color: AppColors.tagSlate,
+                  title: 'Set your target',
                   description: 'Choose your upcoming exam date or completion target and daily available study hours.',
                 ),
-                const SizedBox(height: 14),
                 _buildHowItWorksItem(
-                  icon: Icons.library_books_rounded,
-                  color: const Color(0xFF7C3AED),
-                  title: '2. Select Your Material',
+                  step: '02',
+                  color: AppColors.tagClay,
+                  title: 'Select your material',
                   description: 'Type your topics or select from your uploaded PDF notes to ground the curriculum.',
                 ),
-                const SizedBox(height: 14),
                 _buildHowItWorksItem(
-                  icon: Icons.shuffle_rounded,
-                  color: const Color(0xFF059669),
-                  title: '3. Auto-Balanced Routine',
+                  step: '03',
+                  color: AppColors.tagSage,
+                  title: 'Follow a balanced routine',
                   description: 'The AI interleaves Concept Reading, Spaced Revision, and Practice Quizzes to maximize retention.',
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.xxl),
+          const SizedBox(height: AppSpacing.xl),
 
           // Prominent CTA Button
-          Container(
+          SizedBox(
             height: 54,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.35),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
             child: ElevatedButton.icon(
               onPressed: () => _showCreatePlanBottomSheet(context),
-              icon: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
-              label: const Text(
-                'Generate Study Plan with AI',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                shadowColor: Colors.transparent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              ),
+              icon: const Icon(Icons.edit_calendar_rounded, color: AppColors.highlighter, size: 20),
+              label: const Text('Build my 7-day plan'),
             ),
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -232,31 +187,36 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
   }
 
   Widget _buildHowItWorksItem({
-    required IconData icon,
+    required String step,
     required Color color,
     required String title,
     required String description,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: color.withValues(alpha: 0.12),
-          child: Icon(icon, size: 16, color: color),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary)),
-              const SizedBox(height: 2),
-              Text(description, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3)),
-            ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 32,
+            child: Text(step, style: AppTypography.mono.copyWith(color: color, fontWeight: FontWeight.w700)),
           ),
-        ),
-      ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTypography.title.copyWith(fontSize: 15)),
+                const SizedBox(height: 2),
+                Text(description, style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -276,28 +236,18 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
     final subjects = (plan['subjects'] as List? ?? []).map((e) => e.toString()).toList();
 
     return RefreshIndicator(
+      color: AppColors.ink,
       onRefresh: () => ref.refresh(studyPlanProvider.future),
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          // ── Progress Overview Card ─────────────────────────────────────────
+          // ── Progress Overview Card (ink hero) ─────────────────────────────
           Container(
-            padding: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.sm, AppSpacing.lg),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryDark.withValues(alpha: 0.3),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
+              color: AppColors.ink,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,88 +256,90 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
+                        color: AppColors.highlighter,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.timer_outlined, size: 14, color: Colors.white),
-                          const SizedBox(width: 5),
-                          Text(
-                            daysLeft != null && daysLeft >= 0 ? '$daysLeft days remaining' : 'Target reached',
-                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                        ],
+                      child: Text(
+                        daysLeft != null && daysLeft >= 0 ? '$daysLeft DAYS LEFT' : 'TARGET REACHED',
+                        style: AppTypography.label.copyWith(color: AppColors.ink, fontWeight: FontWeight.w700),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline_rounded, color: Colors.white70, size: 20),
+                      icon: Icon(Icons.delete_outline_rounded, color: AppColors.onInk.withValues(alpha: 0.7), size: 20),
                       tooltip: 'Delete Plan',
                       onPressed: () => _confirmDeletePlan(context, plan['id']),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
                   '7-Day Study Roadmap',
-                  style: AppTypography.heading2.copyWith(color: Colors.white, fontSize: 22),
+                  style: AppTypography.heading2.copyWith(color: AppColors.onInk),
                 ),
                 if (targetDate != null) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Exam Target: ${_formatDate(targetDate)}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    'EXAM · ${_formatDate(targetDate).toUpperCase()}',
+                    style: AppTypography.label.copyWith(color: AppColors.onInk.withValues(alpha: 0.7)),
                   ),
                 ],
-                const SizedBox(height: 16),
-                // Progress Bar
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '$completedCount of $totalCount tasks completed',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                    ),
-                    Text(
-                      '${(progressPercent * 100).toInt()}%',
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: progressPercent,
-                    minHeight: 8,
-                    backgroundColor: Colors.white.withValues(alpha: 0.25),
-                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF34D399)),
+                const SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.only(right: AppSpacing.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${(progressPercent * 100).toInt()}%',
+                            style: AppTypography.heading1.copyWith(color: AppColors.highlighter, height: 1),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '$completedCount / $totalCount TASKS',
+                            style: AppTypography.label.copyWith(color: AppColors.onInk.withValues(alpha: 0.7)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: progressPercent,
+                          minHeight: 6,
+                          backgroundColor: AppColors.onInk.withValues(alpha: 0.15),
+                          valueColor: const AlwaysStoppedAnimation<Color>(AppColors.highlighter),
+                        ),
+                      ),
+                      if (subjects.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: subjects.take(3).map((sub) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                              border: Border.all(color: AppColors.onInk.withValues(alpha: 0.3)),
+                            ),
+                            child: Text(
+                              sub,
+                              style: AppTypography.bodySmall.copyWith(color: AppColors.onInk),
+                            ),
+                          )).toList(),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (subjects.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: subjects.take(3).map((sub) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        sub,
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
-                      ),
-                    )).toList(),
-                  ),
-                ],
               ],
             ),
           ),
-          const SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.md),
 
           // ── Quick Action Shortcuts ──────────────────────────────────────────
           Row(
@@ -395,12 +347,11 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => context.push('/focus-timer'),
-                  icon: const Icon(Icons.timer_rounded, size: 18, color: AppColors.primary),
-                  label: const Text('Focus Timer', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  icon: const Icon(Icons.timer_outlined, size: 18, color: AppColors.accent),
+                  label: const Text('Focus Timer'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: const BorderSide(color: AppColors.primaryLight),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: AppColors.surface,
+                    side: const BorderSide(color: AppColors.line),
                   ),
                 ),
               ),
@@ -408,12 +359,11 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => context.push('/quizzes'),
-                  icon: const Icon(Icons.quiz_rounded, size: 18, color: Color(0xFF2563EB)),
-                  label: const Text('Practice Quiz', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF2563EB))),
+                  icon: const Icon(Icons.quiz_outlined, size: 18, color: AppColors.primary),
+                  label: const Text('Practice Quiz'),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: const BorderSide(color: Color(0xFFBFDBFE)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: AppColors.surface,
+                    side: const BorderSide(color: AppColors.line),
                   ),
                 ),
               ),
@@ -424,18 +374,31 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
           // ── Tasks Header ────────────────────────────────────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('Your Tasks', style: AppTypography.heading3),
-              Text(
-                'Tap checkmark to complete',
-                style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
-              ),
+              Text('Your tasks', style: AppTypography.heading3),
+              Text('TAP BOX TO COMPLETE', style: AppTypography.label.copyWith(fontSize: 10)),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
 
           // ── Tasks List ──────────────────────────────────────────────────────
-          ...tasks.map((task) => _buildTaskCard(task)),
+          Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.line),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < tasks.length; i++) ...[
+                  if (i > 0) const Divider(height: 1, color: AppColors.line),
+                  _buildTaskCard(tasks[i]),
+                ],
+              ],
+            ),
+          ),
           const SizedBox(height: 32),
         ],
       ),
@@ -453,125 +416,107 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
     IconData badgeIcon;
     switch (type) {
       case 'QUIZ':
-        badgeColor = const Color(0xFF7C3AED);
-        badgeIcon = Icons.quiz_rounded;
+        badgeColor = AppColors.primary;
+        badgeIcon = Icons.quiz_outlined;
         break;
       case 'REVISION':
-        badgeColor = const Color(0xFFD97706);
+        badgeColor = AppColors.tagOchre;
         badgeIcon = Icons.sync_rounded;
         break;
       default: // READING
-        badgeColor = const Color(0xFF2563EB);
-        badgeIcon = Icons.menu_book_rounded;
+        badgeColor = AppColors.tagSlate;
+        badgeIcon = Icons.menu_book_outlined;
         break;
     }
+    final metaStyle = AppTypography.label.copyWith(fontSize: 10, letterSpacing: 0.6);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isCompleted ? Colors.grey.shade50 : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isCompleted ? Colors.grey.shade200 : Colors.grey.shade300,
-          width: 1,
-        ),
-        boxShadow: isCompleted
-            ? null
-            : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Subject-colored left bar
+          Container(width: 3, color: isCompleted ? AppColors.line : badgeColor),
+          // Checkbox with a 44px tap target
+          Semantics(
+            checked: isCompleted,
+            label: 'Mark task complete',
+            child: InkWell(
+              onTap: () async {
+                try {
+                  await ref.read(studyPlanNotifierProvider.notifier).toggleTask(task['id']);
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update task: $e')));
+                  }
+                }
+              },
+              child: SizedBox(
+                width: 52,
+                child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: isCompleted ? AppColors.ink : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.ink, width: 1.5),
+                    ),
+                    child: isCompleted
+                        ? const Icon(Icons.check_rounded, size: 16, color: AppColors.highlighter)
+                        : null,
+                  ),
                 ),
-              ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        leading: GestureDetector(
-          onTap: () async {
-            try {
-              await ref.read(studyPlanNotifierProvider.notifier).toggleTask(task['id']);
-            } catch (e) {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update task: $e')));
-              }
-            }
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: isCompleted ? const Color(0xFF10B981) : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isCompleted ? const Color(0xFF10B981) : Colors.grey.shade400,
-                width: 2,
               ),
             ),
-            child: isCompleted
-                ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
-                : null,
           ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            decoration: isCompleted ? TextDecoration.lineThrough : null,
-            color: isCompleted ? Colors.grey.shade400 : AppColors.textPrimary,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 6),
-          child: Row(
-            children: [
-              // Type Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: badgeColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(badgeIcon, size: 12, color: badgeColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      type,
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Duration Pill
-              Row(
-                mainAxisSize: MainAxisSize.min,
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.access_time_rounded, size: 12, color: Colors.grey.shade500),
-                  const SizedBox(width: 3),
-                  Text('$duration m', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                  Text(
+                    title,
+                    style: AppTypography.title.copyWith(
+                      fontSize: 15,
+                      decoration: isCompleted ? TextDecoration.lineThrough : null,
+                      decorationColor: AppColors.textMuted,
+                      color: isCompleted ? AppColors.textMuted : AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(badgeIcon, size: 12, color: isCompleted ? AppColors.textMuted : badgeColor),
+                          const SizedBox(width: 4),
+                          Text(type, style: metaStyle.copyWith(color: isCompleted ? AppColors.textMuted : badgeColor)),
+                        ],
+                      ),
+                      Text('$duration MIN', style: metaStyle),
+                      if (taskDate != null) Text(_formatTaskDate(taskDate).toUpperCase(), style: metaStyle),
+                    ],
+                  ),
                 ],
               ),
-              if (taskDate != null) ...[
-                const SizedBox(width: 8),
-                Text('•', style: TextStyle(color: Colors.grey.shade400)),
-                const SizedBox(width: 8),
-                Text(_formatTaskDate(taskDate), style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
-              ],
-            ],
+            ),
           ),
-        ),
-        trailing: type == 'QUIZ' && !isCompleted
-            ? IconButton(
-                icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primary),
-                tooltip: 'Take Quiz',
-                onPressed: () => context.push('/quizzes'),
-              )
-            : null,
+          if (type == 'QUIZ' && !isCompleted)
+            IconButton(
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18, color: AppColors.ink),
+              tooltip: 'Take Quiz',
+              onPressed: () => context.push('/quizzes'),
+            )
+          else
+            const SizedBox(width: AppSpacing.md),
+        ],
       ),
     );
   }
@@ -598,8 +543,8 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
               ),
               child: SafeArea(
                 top: false,
@@ -622,7 +567,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                             width: 40,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
+                              color: AppColors.lineStrong,
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -630,8 +575,9 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Create AI Study Plan', style: AppTypography.heading3),
+                            Text('New study plan', style: AppTypography.heading2),
                             IconButton(
+                              tooltip: 'Close',
                               icon: const Icon(Icons.close_rounded),
                               onPressed: isGenerating ? null : () => Navigator.pop(ctx),
                             ),
@@ -640,12 +586,12 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         'Set your target deadline and subjects. Gemini will architect a balanced 7-day study routine.',
-                        style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
+                        style: AppTypography.bodyMedium.copyWith(color: AppColors.textSecondary),
                       ),
-                      const Divider(height: 24),
+                      const Divider(height: 32),
 
                       // 1. Target Date Selector
-                      Text('Target Exam / Completion Date', style: AppTypography.heading3.copyWith(fontSize: 14)),
+                      Text('TARGET EXAM / COMPLETION DATE', style: AppTypography.label),
                       const SizedBox(height: 8),
                       InkWell(
                         onTap: isGenerating
@@ -663,12 +609,13 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                                   });
                                 }
                               },
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.surface,
+                            border: Border.all(color: AppColors.line),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
                           ),
                           child: Row(
                             children: [
@@ -676,12 +623,12 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                               const SizedBox(width: 10),
                               Text(
                                 _formatDate(selectedTargetDate),
-                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                style: AppTypography.title.copyWith(fontSize: 15),
                               ),
                               const Spacer(),
                               Text(
-                                '${selectedTargetDate.difference(DateTime.now()).inDays} days from now',
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                'IN ${selectedTargetDate.difference(DateTime.now()).inDays} DAYS',
+                                style: AppTypography.label,
                               ),
                             ],
                           ),
@@ -690,15 +637,13 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                       const SizedBox(height: AppSpacing.lg),
 
                       // 2. Subjects / Topics
-                      Text('Subjects or Topics to Cover', style: AppTypography.heading3.copyWith(fontSize: 14)),
+                      Text('SUBJECTS OR TOPICS TO COVER', style: AppTypography.label),
                       const SizedBox(height: 8),
                       TextField(
                         controller: subjectController,
                         enabled: !isGenerating,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           hintText: 'e.g. Cellular Biology, Genetics, Mitosis',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         ),
                       ),
                       // Uploaded docs chips
@@ -711,7 +656,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('Tap to add uploaded PDF:', style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                                Text('Tap to add an uploaded PDF', style: AppTypography.bodySmall),
                                 const SizedBox(height: 6),
                                 Wrap(
                                   spacing: 6,
@@ -719,9 +664,9 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                                   children: readyDocs.map((d) {
                                     final cleanName = d.name.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '');
                                     return ActionChip(
-                                      label: Text(cleanName, style: const TextStyle(fontSize: 11)),
-                                      avatar: const Icon(Icons.add, size: 14),
-                                      backgroundColor: const Color(0xFFF3E8FF),
+                                      label: Text(cleanName, style: AppTypography.bodySmall.copyWith(color: AppColors.textPrimary)),
+                                      avatar: const Icon(Icons.add, size: 14, color: AppColors.primary),
+                                      backgroundColor: AppColors.surface,
                                       onPressed: isGenerating
                                           ? null
                                           : () {
@@ -748,16 +693,16 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Daily Study Availability', style: AppTypography.heading3.copyWith(fontSize: 14)),
+                          Text('DAILY STUDY AVAILABILITY', style: AppTypography.label),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.highlighterSoft,
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
                             ),
                             child: Text(
-                              '${hoursPerDay.toInt()} hrs / day',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 13),
+                              '${hoursPerDay.toInt()} H / DAY',
+                              style: AppTypography.mono.copyWith(fontSize: 12, fontWeight: FontWeight.w700),
                             ),
                           ),
                         ],
@@ -767,7 +712,8 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                         min: 1,
                         max: 8,
                         divisions: 7,
-                        activeColor: AppColors.primary,
+                        activeColor: AppColors.ink,
+                        inactiveColor: AppColors.surfaceSunken,
                         onChanged: isGenerating
                             ? null
                             : (val) {
@@ -805,8 +751,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                                     navigator.pop();
                                     messenger.showSnackBar(
                                       const SnackBar(
-                                        content: Text('🎉 Your AI Study Plan has been created!'),
-                                        backgroundColor: Color(0xFF10B981),
+                                        content: Text('Your study plan is ready.'),
                                       ),
                                     );
                                   } catch (e) {
@@ -819,9 +764,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.65),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            disabledBackgroundColor: AppColors.inkSoft.withValues(alpha: 0.65),
                           ),
                           child: isGenerating
                               ? const Row(
@@ -830,19 +773,16 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                                     SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                      child: CircularProgressIndicator(color: AppColors.highlighter, strokeWidth: 2.5),
                                     ),
                                     SizedBox(width: 12),
                                     Text(
-                                      'Architecting Schedule with AI...',
-                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                      'Building your schedule...',
+                                      style: TextStyle(color: AppColors.onInk, fontWeight: FontWeight.w600, fontSize: 14),
                                     ),
                                   ],
                                 )
-                              : const Text(
-                                  'Generate 7-Day Plan',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                                ),
+                              : const Text('Generate 7-Day Plan'),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -871,7 +811,10 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: AppColors.onInk,
+            ),
             onPressed: () async {
               Navigator.pop(ctx);
               try {
@@ -880,7 +823,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                 messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: const Text('Delete'),
           ),
         ],
       ),

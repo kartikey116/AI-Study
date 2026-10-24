@@ -8,7 +8,8 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "prisma:generate": "prisma generate",
-    "prisma:push": "prisma db push"
+    "prisma:push": "prisma db push && ts-node --transpile-only scripts/post_db_push.ts",
+    "test:isolation": "ts-node --transpile-only scripts/test_isolation.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^0.0.52",
@@ -21,6 +22,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "express-rate-limit": "^8.7.0",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "pdf-parse": "^1.1.1",
     "zod": "^3.25.76"

@@ -31,6 +31,15 @@ export async function createSignedDownloadUrl(storagePath: string) {
   return data.signedUrl;
 }
 
+/** Real size of a stored file, or null if it doesn't exist. */
+export async function getStorageFileInfo(storagePath: string): Promise<{ size: number } | null> {
+  const { data, error } = await supabase.storage
+    .from(DOCUMENTS_BUCKET)
+    .info(storagePath);
+  if (error || !data) return null;
+  return { size: data.size ?? 0 };
+}
+
 /** Delete a file from Supabase Storage */
 export async function deleteStorageFile(storagePath: string) {
   const { error } = await supabase.storage

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/components/message_bubbles.dart';
 import '../../../../core/layout/main_layout.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -83,26 +85,20 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Start New Chat?'),
-        content: const Text('Your current conversation is automatically saved in history. Start a fresh chat?'),
+        title: const Text('Start a new chat?'),
+        content: const Text('Your current conversation is saved in history. Start a fresh chat?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
+            style: ElevatedButton.styleFrom(minimumSize: const Size(96, 44)),
             onPressed: () {
               Navigator.pop(ctx);
               ref.read(chatProvider.notifier).startNewChat();
             },
-            child: const Text('New Chat'),
+            child: const Text('New chat'),
           ),
         ],
       ),
@@ -113,14 +109,15 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.75,
         ),
         decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
         ),
         child: SafeArea(
           top: false,
@@ -128,33 +125,20 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 12, bottom: 8),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              const _SheetHandle(),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Chat History',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                    ),
+                    Text('History', style: AppTypography.heading3),
                     TextButton.icon(
                       onPressed: () {
                         Navigator.pop(ctx);
                         _confirmNewChat(context);
                       },
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('New Chat'),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('New chat'),
                     ),
                   ],
                 ),
@@ -171,13 +155,13 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                       );
                     }
                     if (snapshot.hasError || snapshot.data == null || snapshot.data!.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.all(32.0),
+                      return Padding(
+                        padding: const EdgeInsets.all(32.0),
                         child: Center(
                           child: Text(
-                            'No previous conversations found.\nAsk questions to build your study history!',
+                            'No previous conversations yet.\nAsk a question to start your study history.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey),
+                            style: AppTypography.bodyMedium,
                           ),
                         ),
                       );
@@ -185,19 +169,24 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                     return ListView.separated(
                       shrinkWrap: true,
                       itemCount: snapshot.data!.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, __) => const Divider(height: 1, indent: 72),
                       itemBuilder: (context, index) {
                         final conv = snapshot.data![index];
                         final title = conv['title'] ?? 'Study Session';
                         final count = conv['_count']?['messages'] ?? 0;
                         return ListTile(
-                          leading: const CircleAvatar(
-                            backgroundColor: Color(0xFFF3E8FF),
-                            child: Icon(Icons.chat_bubble_outline_rounded, color: AppColors.primary, size: 18),
+                          minVerticalPadding: 12,
+                          leading: const _IconBadge(
+                            icon: Icons.chat_bubble_outline_rounded,
+                            color: AppColors.primary,
+                            bgColor: AppColors.primarySoft,
                           ),
-                          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                          subtitle: Text('$count messages'),
-                          trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
+                          title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.title),
+                          subtitle: Text(
+                            '$count messages',
+                            style: AppTypography.mono.copyWith(fontSize: 12, color: AppColors.textMuted),
+                          ),
+                          trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
                           onTap: () {
                             Navigator.pop(ctx);
                             ref.read(chatProvider.notifier).loadConversation(conv['id']);
@@ -219,6 +208,7 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      showDragHandle: false,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final docsAsync = ref.watch(documentsProvider);
@@ -227,8 +217,8 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
             maxHeight: MediaQuery.of(context).size.height * 0.75,
           ),
           decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
           ),
           child: SafeArea(
             top: false,
@@ -236,26 +226,13 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(top: 12, bottom: 8),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
+                const _SheetHandle(),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Study Context',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-                      ),
+                      Text('Study context', style: AppTypography.heading3),
                       TextButton(
                         onPressed: () {
                           setState(() {
@@ -264,7 +241,7 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                           });
                           Navigator.pop(ctx);
                         },
-                        child: const Text('Reset to General'),
+                        child: const Text('Reset'),
                       ),
                     ],
                   ),
@@ -272,13 +249,20 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                 const Divider(height: 1),
                 // Option 1: General Study
                 ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFEFF6FF),
-                    child: Icon(Icons.public_rounded, color: Color(0xFF2563EB), size: 20),
+                  minVerticalPadding: 12,
+                  leading: const _IconBadge(
+                    icon: Icons.public_rounded,
+                    color: AppColors.info,
+                    bgColor: AppColors.infoSoft,
                   ),
-                  title: const Text('General Study (AI Knowledge)', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Ask any topic, formula, or concept (e.g. What is SQL?)'),
-                  trailing: _contextMode == ChatContextMode.general ? const Icon(Icons.check_circle, color: Color(0xFF2563EB)) : null,
+                  title: Text('General study', style: AppTypography.title),
+                  subtitle: Text(
+                    'Any topic, formula or concept — e.g. "What is SQL?"',
+                    style: AppTypography.bodySmall,
+                  ),
+                  trailing: _contextMode == ChatContextMode.general
+                      ? const Icon(Icons.check_circle_rounded, color: AppColors.ink)
+                      : null,
                   onTap: () {
                     setState(() {
                       _contextMode = ChatContextMode.general;
@@ -289,13 +273,17 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                 ),
                 // Option 2: All Documents
                 ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Color(0xFFEDE9FE),
-                    child: Icon(Icons.library_books_rounded, color: AppColors.primary, size: 20),
+                  minVerticalPadding: 12,
+                  leading: const _IconBadge(
+                    icon: Icons.library_books_rounded,
+                    color: AppColors.primary,
+                    bgColor: AppColors.primarySoft,
                   ),
-                  title: const Text('All Uploaded Documents', style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text('Search across all your uploaded PDFs'),
-                  trailing: _contextMode == ChatContextMode.allDocs ? const Icon(Icons.check_circle, color: AppColors.primary) : null,
+                  title: Text('All my documents', style: AppTypography.title),
+                  subtitle: Text('Search across every PDF you uploaded', style: AppTypography.bodySmall),
+                  trailing: _contextMode == ChatContextMode.allDocs
+                      ? const Icon(Icons.check_circle_rounded, color: AppColors.ink)
+                      : null,
                   onTap: () {
                     setState(() {
                       _contextMode = ChatContextMode.allDocs;
@@ -305,21 +293,21 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                   },
                 ),
                 const Divider(height: 1),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: Text(
-                    'OR SELECT A SPECIFIC PDF',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+                  child: Text('OR PICK ONE PDF', style: AppTypography.label),
                 ),
                 // Option 3: Specific Docs
                 Flexible(
                   child: docsAsync.when(
                     data: (docs) {
                       if (docs.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('No uploaded documents found. Upload PDFs in the Documents tab.'),
+                        return Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                          child: Text(
+                            'No uploaded documents yet. Upload PDFs in the Docs tab.',
+                            style: AppTypography.bodyMedium,
+                          ),
                         );
                       }
                       return ListView.builder(
@@ -331,19 +319,24 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                           final isReady = doc.status == 'READY';
 
                           return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: isReady ? const Color(0xFFDCFCE7) : const Color(0xFFFFEDD5),
-                              child: Icon(
-                                Icons.description_rounded,
-                                color: isReady ? Colors.green : Colors.orange,
-                                size: 20,
-                              ),
+                            leading: _IconBadge(
+                              icon: Icons.description_rounded,
+                              color: isReady ? AppColors.success : AppColors.warning,
+                              bgColor: isReady ? AppColors.successSoft : AppColors.warningSoft,
                             ),
-                            title: Text(doc.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                            subtitle: Text('${doc.status} • ${doc.pageCount ?? 0} pages'),
+                            title: Text(doc.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppTypography.title),
+                            subtitle: Text(
+                              '${doc.status} · ${doc.pageCount ?? 0} pp',
+                              style: AppTypography.mono.copyWith(fontSize: 12, color: AppColors.textMuted),
+                            ),
                             trailing: isSelected
-                                ? const Icon(Icons.check_circle, color: Colors.green)
-                                : (!isReady ? const Text('Processing', style: TextStyle(color: Colors.orange, fontSize: 11)) : null),
+                                ? const Icon(Icons.check_circle_rounded, color: AppColors.ink)
+                                : (!isReady
+                                    ? Text(
+                                        'PROCESSING',
+                                        style: AppTypography.label.copyWith(color: AppColors.warning, fontSize: 10),
+                                      )
+                                    : null),
                             enabled: isReady,
                             onTap: () {
                               setState(() {
@@ -357,7 +350,10 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                       );
                     },
                     loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
-                    error: (e, _) => Padding(padding: const EdgeInsets.all(20), child: Text('Error: $e')),
+                    error: (e, _) => Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Text('Error: $e', style: AppTypography.bodyMedium.copyWith(color: AppColors.error)),
+                    ),
                   ),
                 ),
               ],
@@ -388,114 +384,66 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
 
     final String contextTitle = isSpecificDoc
         ? (_selectedDocument?.name ?? 'Selected PDF')
-        : (isAllDocs ? 'All Documents' : 'General Study (AI)');
+        : (isAllDocs ? 'All documents' : 'General study');
 
     return MainLayout(
       currentIndex: 2,
       child: Container(
-        color: const Color(0xFFF7F6FD),
+        color: AppColors.paper,
         child: Column(
           children: [
-            // ── 1. Gradient Header: Back + AI Tutor + Online Dot + Actions ─
+            // ── 1. Header: Back + Monogram + Title/Status + Actions ─────────
             Container(
               padding: EdgeInsets.fromLTRB(
-                16,
-                MediaQuery.of(context).padding.top + 8,
-                16,
-                14,
+                8,
+                MediaQuery.of(context).padding.top + 6,
+                4,
+                10,
               ),
               decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Color(0xFF7C3AED),
-                    Color(0xFFB06EF5),
-                    Color(0xFFF472B6),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: AppColors.paper,
+                border: Border(bottom: BorderSide(color: AppColors.line)),
               ),
               child: Row(
                 children: [
-                  // Circular Back Button
-                  GestureDetector(
-                    onTap: () {
+                  IconButton(
+                    tooltip: 'Back',
+                    onPressed: () {
                       if (context.canPop()) {
                         context.pop();
                       } else {
                         context.go('/home');
                       }
                     },
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_rounded,
-                        color: Color(0xFF1E1B4B),
-                        size: 20,
-                      ),
-                    ),
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
                   ),
 
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 2),
+                  const AssistantMonogram(size: 38),
+                  const SizedBox(width: 12),
 
-                  // Circular Sparkle Avatar
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.4),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: const Icon(
-                      Icons.auto_awesome,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-
-                  const SizedBox(width: 10),
-
-                  // Title & Status (Online / Typing)
+                  // Title & Status (Online / Writing)
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'AI Tutor',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
+                        Text('Study Assistant', style: AppTypography.heading3.copyWith(fontSize: 19)),
+                        const SizedBox(height: 3),
                         Row(
                           children: [
                             Container(
                               width: 7,
                               height: 7,
                               decoration: BoxDecoration(
-                                color: chatState.isLoading ? Colors.amberAccent : const Color(0xFF22C55E),
+                                color: chatState.isLoading ? AppColors.highlighter : AppColors.success,
                                 shape: BoxShape.circle,
+                                border: chatState.isLoading ? Border.all(color: AppColors.ink, width: 0.8) : null,
                               ),
                             ),
-                            const SizedBox(width: 5),
+                            const SizedBox(width: 6),
                             Text(
-                              chatState.isLoading ? 'Typing...' : 'Online',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white.withValues(alpha: 0.9),
-                              ),
+                              chatState.isLoading ? 'WRITING…' : 'ONLINE',
+                              style: AppTypography.label.copyWith(fontSize: 10),
                             ),
                           ],
                         ),
@@ -504,59 +452,58 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                   ),
 
                   // Actions: History, New Chat, More Options
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      GestureDetector(
-                        onTap: () => _showHistorySheet(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          child: const Icon(Icons.history_rounded, color: Colors.white, size: 22),
+                  IconButton(
+                    tooltip: 'Chat history',
+                    onPressed: () => _showHistorySheet(context),
+                    icon: const Icon(Icons.history_rounded, color: AppColors.ink, size: 22),
+                  ),
+                  IconButton(
+                    tooltip: 'New chat',
+                    onPressed: () => _confirmNewChat(context),
+                    icon: const Icon(Icons.add_comment_outlined, color: AppColors.ink, size: 21),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'More options',
+                    icon: const Icon(Icons.more_vert_rounded, color: AppColors.ink, size: 22),
+                    color: AppColors.surface,
+                    surfaceTintColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      side: const BorderSide(color: AppColors.line),
+                    ),
+                    onSelected: (val) {
+                      if (val == 'clear') {
+                        ref.read(chatProvider.notifier).startNewChat();
+                      } else if (val == 'context') {
+                        _showDocumentSelector(context);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem(
+                        value: 'clear',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Clear conversation',
+                              style: AppTypography.bodyMedium.copyWith(color: AppColors.error),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 2),
-                      GestureDetector(
-                        onTap: () => _confirmNewChat(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          child: const Icon(Icons.add_comment_outlined, color: Colors.white, size: 21),
+                      PopupMenuItem(
+                        value: 'context',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.tune_rounded, size: 18, color: AppColors.textSecondary),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Change context',
+                              style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary),
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: 2),
-                      PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert_rounded, color: Colors.white, size: 22),
-                        padding: EdgeInsets.zero,
-                        color: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        onSelected: (val) {
-                          if (val == 'clear') {
-                            ref.read(chatProvider.notifier).startNewChat();
-                          } else if (val == 'context') {
-                            _showDocumentSelector(context);
-                          }
-                        },
-                        itemBuilder: (ctx) => [
-                          const PopupMenuItem(
-                            value: 'clear',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFFEF4444)),
-                                SizedBox(width: 8),
-                                Text('Clear Conversation', style: TextStyle(fontSize: 13, color: Color(0xFFEF4444))),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuItem(
-                            value: 'context',
-                            child: Row(
-                              children: [
-                                Icon(Icons.tune_rounded, size: 18, color: Color(0xFF475569)),
-                                SizedBox(width: 8),
-                                Text('Change Context', style: TextStyle(fontSize: 13)),
-                              ],
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),
@@ -569,59 +516,58 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
               child: Row(
                 children: [
-                  const Icon(Icons.tune_rounded, size: 17, color: Color(0xFF64748B)),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Context:',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
+                  Text('CONTEXT', style: AppTypography.label),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: GestureDetector(
-                      onTap: () => _showDocumentSelector(context),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFBFDBFE), width: 1.2),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isSpecificDoc
-                                  ? Icons.description_rounded
-                                  : (isAllDocs ? Icons.library_books_rounded : Icons.public_rounded),
-                              size: 14,
-                              color: isSpecificDoc
-                                  ? const Color(0xFF059669)
-                                  : (isAllDocs ? const Color(0xFF7C3AED) : const Color(0xFF2563EB)),
+                    child: Semantics(
+                      button: true,
+                      label: 'Change study context, currently $contextTitle',
+                      excludeSemantics: true,
+                      child: Material(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        child: InkWell(
+                          onTap: () => _showDocumentSelector(context),
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                          child: Container(
+                            height: 40,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                              border: Border.all(color: AppColors.line),
                             ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                contextTitle,
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF1E3A8A),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  isSpecificDoc
+                                      ? Icons.description_rounded
+                                      : (isAllDocs ? Icons.library_books_rounded : Icons.public_rounded),
+                                  size: 16,
+                                  color: isSpecificDoc
+                                      ? AppColors.success
+                                      : (isAllDocs ? AppColors.primary : AppColors.info),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    contextTitle,
+                                    style: AppTypography.bodySmall.copyWith(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.unfold_more_rounded,
+                                  size: 18,
+                                  color: AppColors.textMuted,
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.arrow_drop_down_rounded,
-                              size: 20,
-                              color: Color(0xFF2563EB),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -634,25 +580,26 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
             if (chatState.error != null)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFFECACA)),
+                  color: AppColors.errorSoft,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: const Border(left: BorderSide(color: AppColors.error, width: 3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 18),
+                    const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         chatState.error!,
-                        style: const TextStyle(color: Colors.red, fontSize: 12),
+                        style: AppTypography.bodySmall.copyWith(color: AppColors.error),
                       ),
                     ),
                     TextButton(
                       onPressed: () => ref.read(chatProvider.notifier).retryLastMessage(documentId: _selectedDocument?.id),
-                      child: const Text('Retry', style: TextStyle(color: Colors.red, fontSize: 12)),
+                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                      child: const Text('Retry'),
                     ),
                   ],
                 ),
@@ -665,9 +612,8 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                       controller: _scrollController,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       children: [
-                        // Initial welcome bubble matching the design screenshot
                         AiMessageBubble(
-                          text: "Hi $firstName! 👋\nI'm your AI study assistant. I can help you understand concepts, create notes, generate quizzes, and more. What would you like to learn today?",
+                          text: "Hi $firstName.\nI'm your study assistant. I can explain concepts, summarise your notes, write practice questions and more. What are you working on today?",
                           timestamp: TimeOfDay.now().format(context),
                         ),
                         if (chatState.isLoading && (chatState.streamingText?.isEmpty ?? true))
@@ -717,67 +663,57 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
             ),
 
             // ── 4. Suggested Prompts Row ────────────────────────────────────
-            Padding(
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.fromLTRB(16, 2, 16, 8),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _SuggestedPromptChip(
-                      icon: '💡',
-                      label: 'Explain this simply',
-                      onTap: () => _sendMessage('Can you explain this simply?'),
-                    ),
-                    const SizedBox(width: 8),
-                    _SuggestedPromptChip(
-                      icon: '📄',
-                      label: 'Give me an example',
-                      onTap: () => _sendMessage('Can you give me a clear real-world example?'),
-                    ),
-                    const SizedBox(width: 8),
-                    _SuggestedPromptChip(
-                      icon: '❓',
-                      label: 'Test me',
-                      onTap: () => _sendMessage('Test me with a quick practice question!'),
-                    ),
-                  ],
-                ),
+              child: Row(
+                children: [
+                  _SuggestedPromptChip(
+                    icon: Icons.lightbulb_outline_rounded,
+                    label: 'Explain this simply',
+                    onTap: () => _sendMessage('Can you explain this simply?'),
+                  ),
+                  const SizedBox(width: 8),
+                  _SuggestedPromptChip(
+                    icon: Icons.menu_book_outlined,
+                    label: 'Give me an example',
+                    onTap: () => _sendMessage('Can you give me a clear real-world example?'),
+                  ),
+                  const SizedBox(width: 8),
+                  _SuggestedPromptChip(
+                    icon: Icons.quiz_outlined,
+                    label: 'Test me',
+                    onTap: () => _sendMessage('Test me with a quick practice question!'),
+                  ),
+                ],
               ),
             ),
 
-            // ── 5. Input Bar: Paperclip + Pill Input with Mic + Send Button ──
+            // ── 5. Composer: Attach + Field + Send ──────────────────────────
             Container(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-              color: Colors.transparent,
+              padding: const EdgeInsets.fromLTRB(8, 8, 16, 12),
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                border: Border(top: BorderSide(color: AppColors.line)),
+              ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Attachment Paperclip Icon
-                  GestureDetector(
-                    onTap: () => _showDocumentSelector(context),
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      decoration: const BoxDecoration(
-                        color: Colors.transparent,
-                      ),
-                      child: const Icon(
-                        Icons.attach_file_rounded,
-                        color: Color(0xFF64748B),
-                        size: 24,
-                      ),
-                    ),
+                  IconButton(
+                    tooltip: 'Choose documents for context',
+                    onPressed: () => _showDocumentSelector(context),
+                    icon: const Icon(Icons.attach_file_rounded, color: AppColors.textSecondary, size: 22),
                   ),
 
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 2),
 
-                  // Input Pill - Full Width Container
                   Expanded(
                     child: Container(
                       constraints: const BoxConstraints(minHeight: 48, maxHeight: 120),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
+                        color: AppColors.paper,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: AppColors.line),
                       ),
                       child: TextField(
                         controller: _controller,
@@ -786,21 +722,19 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                         minLines: 1,
                         maxLines: 4,
                         textAlignVertical: TextAlignVertical.center,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF0F172A),
-                        ),
+                        style: AppTypography.bodyLarge.copyWith(fontSize: 15),
                         decoration: InputDecoration(
                           hintText: chatState.isLoading
-                              ? 'Thinking...'
-                              : 'Ask any study question...',
-                          hintStyle: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 13.5,
-                          ),
+                              ? 'Writing a reply…'
+                              : 'Ask a study question…',
+                          hintStyle: AppTypography.bodyMedium.copyWith(color: AppColors.textMuted),
+                          filled: false,
                           border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
                           isDense: false,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         ),
                       ),
                     ),
@@ -808,35 +742,25 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
 
                   const SizedBox(width: 8),
 
-                  // Circular Purple Gradient Send Button
-                  GestureDetector(
-                    onTap: chatState.isLoading ? null : () => _sendMessage(),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF7C3AED),
-                            Color(0xFF9333EA),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF7C3AED).withValues(alpha: 0.35),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
+                  // Ink square send button
+                  Semantics(
+                    button: true,
+                    enabled: !chatState.isLoading,
+                    label: 'Send message',
+                    child: Material(
+                      color: chatState.isLoading ? AppColors.lineStrong : AppColors.ink,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      child: InkWell(
+                        onTap: chatState.isLoading ? null : () => _sendMessage(),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Icon(
+                            Icons.arrow_upward_rounded,
+                            color: chatState.isLoading ? AppColors.textMuted : AppColors.highlighter,
+                            size: 22,
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Icon(
-                          Icons.send_rounded,
-                          color: chatState.isLoading ? Colors.white54 : Colors.white,
-                          size: 19,
                         ),
                       ),
                     ),
@@ -852,11 +776,59 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Suggested Prompt Pill Chip
+// Bottom-sheet drag handle
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SheetHandle extends StatelessWidget {
+  const _SheetHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.only(top: 12, bottom: 8),
+        width: 36,
+        height: 4,
+        decoration: BoxDecoration(
+          color: AppColors.lineStrong,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rounded-square icon badge used in sheet list rows
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _IconBadge extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final Color bgColor;
+
+  const _IconBadge({required this.icon, required this.color, required this.bgColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Icon(icon, color: color, size: 20),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Suggested Prompt Chip
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SuggestedPromptChip extends StatelessWidget {
-  final String icon;
+  final IconData icon;
   final String label;
   final VoidCallback onTap;
 
@@ -868,36 +840,34 @@ class _SuggestedPromptChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 6,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 13)),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF475569),
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.sm),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.sm),
+            border: Border.all(color: AppColors.line),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: AppTypography.bodySmall.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -26,11 +26,13 @@ class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProvid
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1200),
       vsync: this,
     )..repeat(reverse: true);
-    
-    _animation = Tween<double>(begin: 0.3, end: 0.7).animate(_controller);
+
+    _animation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
   }
 
   @override
@@ -41,6 +43,7 @@ class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
@@ -48,7 +51,7 @@ class _SkeletonLoaderState extends State<SkeletonLoader> with SingleTickerProvid
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: AppColors.background.withOpacity(_animation.value),
+            color: AppColors.surfaceSunken.withValues(alpha: reduceMotion ? 1.0 : _animation.value),
             borderRadius: BorderRadius.circular(widget.borderRadius),
           ),
         );

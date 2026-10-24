@@ -1,10 +1,28 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { prisma } from '../utils/db.util';
-import { createSignedUploadUrl, deleteStorageFile } from '../utils/supabase.util';
-import { documentQueue } from '../workers/document.worker';
+import { createSignedUploadUrl, deleteStorageFile, getStorageFileInfo } from '../utils/supabase.util';
+import { validateBody } from '../utils/validation.util';
+import { generationLimiter } from '../middleware/rate-limit.middleware';
+import { documentQueue, MAX_PDF_BYTES } from '../workers/document.worker';
 import { DocumentStatus } from '@prisma/client';
 
 const router = Router();
+
+const uploadUrlSchema = z.object({
+  fileName: z.string().trim().min(1).max(200),
+  mimeType: z.literal('application/pdf').default('application/pdf'),
+});
+
+const confirmUploadSchema = z.object({
+  storagePath: z.string().max(300),
+  originalName: z.string().trim().min(1).max(255),
+});
+
+/** The only path shape /upload-url ever hands out: `<userId>/<timestamp>-<sanitized name>`. */
+const isOwnStoragePath = (userId: string, storagePath: string) =>
+  storagePath.startsWith(`${userId}/`) && /^[0-9a-f-]{36}\/\d+-[a-zA-Z0-9._-]+$/.test(storagePath)
+  && !storagePath.includes('..');
 
 // ── GET /documents — list user's documents ────────────────────────────────
 router.get('/', async (req: Request, res: Response) => {
@@ -33,15 +51,10 @@ router.get('/', async (req: Request, res: Response) => {
 });
 
 // ── POST /documents/upload-url — get signed upload URL ────────────────────
-router.post('/upload-url', async (req: Request, res: Response) => {
+router.post('/upload-url', validateBody(uploadUrlSchema), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const { fileName, mimeType = 'application/pdf' } = req.body;
-
-    if (!fileName) return res.status(400).json({ error: 'fileName is required' });
-    if (mimeType !== 'application/pdf') {
-      return res.status(400).json({ error: 'Only PDF files are supported' });
-    }
+    const { fileName } = req.body as z.infer<typeof uploadUrlSchema>;
 
     // Build storage path: userId/timestamp-filename
     const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -57,13 +70,27 @@ router.post('/upload-url', async (req: Request, res: Response) => {
 });
 
 // ── POST /documents — confirm upload, create record, queue processing ────
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', generationLimiter, validateBody(confirmUploadSchema), async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
-    const { storagePath, originalName, sizeBytes } = req.body;
+    const { storagePath, originalName } = req.body as z.infer<typeof confirmUploadSchema>;
 
-    if (!storagePath || !originalName) {
-      return res.status(400).json({ error: 'storagePath and originalName are required' });
+    // ISOLATION: the worker downloads with the service-role key, so a client-supplied
+    // path must be inside this user's own folder — otherwise anyone could ingest another
+    // user's PDF into their account.
+    if (!isOwnStoragePath(userId, storagePath)) {
+      return res.status(403).json({ error: 'Invalid storage path' });
+    }
+
+    const alreadyRegistered = await prisma.document.findFirst({ where: { storagePath }, select: { id: true } });
+    if (alreadyRegistered) return res.status(409).json({ error: 'This upload was already registered' });
+
+    // Trust the stored object, not the client: it must exist and be within the size limit.
+    const info = await getStorageFileInfo(storagePath);
+    if (!info) return res.status(400).json({ error: 'Uploaded file not found. Please upload again.' });
+    if (info.size > MAX_PDF_BYTES) {
+      await deleteStorageFile(storagePath).catch(() => {});
+      return res.status(413).json({ error: `PDF is too large (max ${MAX_PDF_BYTES / 1024 / 1024} MB)` });
     }
 
     const doc = await prisma.document.create({
@@ -73,7 +100,7 @@ router.post('/', async (req: Request, res: Response) => {
         originalName,
         storagePath,
         mimeType: 'application/pdf',
-        sizeBytes: sizeBytes ?? 0,
+        sizeBytes: info.size,
         status: DocumentStatus.PROCESSING,
       },
     });

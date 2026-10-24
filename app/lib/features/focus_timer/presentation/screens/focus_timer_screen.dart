@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/components/progress_ring.dart';
@@ -11,10 +12,12 @@ class FocusTimerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.paper,
       appBar: AppBar(
         title: const Text('Focus Timer'),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
+          icon: const Icon(Icons.arrow_back_rounded),
+          tooltip: 'Back',
           onPressed: () => context.pop(),
         ),
       ),
@@ -24,21 +27,27 @@ class FocusTimerScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Text('NOW FOCUSING', style: AppTypography.label),
+              const SizedBox(height: AppSpacing.sm),
+              Text('Database Systems', style: AppTypography.heading2),
+              const SizedBox(height: AppSpacing.xl),
               ProgressRing(
                 progress: 0.75,
                 size: 250,
+                color: AppColors.accent,
                 centerChild: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       '18:45',
-                      style: AppTypography.heading1.copyWith(fontSize: 48),
+                      style: AppTypography.mono.copyWith(
+                        fontSize: 52,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -2,
+                      ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Focusing on Database',
-                      style: AppTypography.bodyMedium,
-                    ),
+                    const SizedBox(height: 4),
+                    Text('REMAINING', style: AppTypography.label),
                   ],
                 ),
               ),
@@ -50,7 +59,7 @@ class FocusTimerScreen extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.md),
               AppButton(
-                text: 'Finish Session',
+                text: 'Finish session',
                 onPressed: () => context.pop(),
               ),
             ],

@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
 import '../../../../core/components/app_button.dart';
 import '../../../../core/components/app_text_field.dart';
 
@@ -82,7 +83,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new),
+          tooltip: 'Back',
+          icon: const Icon(Icons.arrow_back_rounded),
           onPressed: isLoading
               ? null // Disable back button while loading to prevent mid-request cancellation issues
               : () {
@@ -93,40 +95,67 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: AppSpacing.xl),
-              Text('Welcome back!', style: AppTypography.heading1),
+              Text('LOG IN', style: AppTypography.label),
               const SizedBox(height: AppSpacing.sm),
-              Text('Ready to study today?', style: AppTypography.bodyLarge),
-              const SizedBox(height: AppSpacing.xxl),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.end,
+                children: [
+                  Text('Welcome ', style: AppTypography.heading1.copyWith(fontSize: 36)),
+                  Stack(
+                    children: [
+                      Positioned(
+                        left: -2,
+                        right: -4,
+                        bottom: 4,
+                        height: 14,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.highlighter,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                      Text('back.', style: AppTypography.heading1.copyWith(fontSize: 36)),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Text(
+                'Pick up where you left off.',
+                style: AppTypography.bodyLarge.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: AppSpacing.xl),
 
               // Error banner — only shown when status is error
               if (authState.status == AuthState.error && authState.errorMessage != null)
                 Container(
-                  padding: const EdgeInsets.all(AppSpacing.md),
+                  padding: const EdgeInsets.only(left: AppSpacing.md),
                   margin: const EdgeInsets.only(bottom: AppSpacing.lg),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                    color: AppColors.errorSoft,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: const Border(left: BorderSide(color: AppColors.error, width: 3)),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
+                      const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 20),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: Text(
                           authState.errorMessage!,
-                          style: AppTypography.bodyMedium.copyWith(color: Colors.red[700]),
+                          style: AppTypography.bodyMedium.copyWith(color: AppColors.error),
                         ),
                       ),
                       // Tap X to dismiss the error banner manually
-                      GestureDetector(
-                        onTap: () => ref.read(authProvider.notifier).clearError(),
-                        child: const Icon(Icons.close, color: Colors.red, size: 18),
+                      IconButton(
+                        tooltip: 'Dismiss error',
+                        onPressed: () => ref.read(authProvider.notifier).clearError(),
+                        icon: const Icon(Icons.close_rounded, color: AppColors.error, size: 18),
                       ),
                     ],
                   ),
@@ -174,14 +203,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 onSubmitted: (_) => isLoading ? null : _validateAndSubmit(),
               ),
 
-              const SizedBox(height: AppSpacing.xxl),
+              const SizedBox(height: AppSpacing.xl),
               AppButton(
                 text: isLoading ? 'Logging in...' : 'Log In',
                 // null disables the button properly (greyed out) while loading
                 onPressed: isLoading ? null : _validateAndSubmit,
               ),
 
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.md),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -193,11 +222,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ref.read(authProvider.notifier).clearError();
                             context.go('/register');
                           },
-                    child: Text(
-                      'Sign Up',
-                      style: AppTypography.bodyMedium.copyWith(
-                        color: isLoading ? AppColors.textMuted : AppColors.primary,
-                        fontWeight: FontWeight.bold,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+                      child: Text(
+                        'Sign Up',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: isLoading ? AppColors.textMuted : AppColors.ink,
+                          fontWeight: FontWeight.w700,
+                          decoration: TextDecoration.underline,
+                          decorationColor: AppColors.highlighter,
+                          decorationThickness: 3,
+                        ),
                       ),
                     ),
                   ),

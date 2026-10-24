@@ -33,8 +33,11 @@ export class TutorAgent {
    - If you generate practice questions, tests, or lists, ensure STRICT sequential numbering (1, 2, 3, 4) without skipping numbers.
    - Do not generate markdown code blocks for normal text, only for actual code snippets.`;
 
-    if (userName) {
-      systemPrompt += `\n\n=== STUDENT PROFILE ===\nThe student's name is "${userName}". Address them warmly by name when greeting or encouraging them.`;
+    // The name is user-controlled text going into the system prompt: keep only name
+    // characters (rows saved before validation existed may contain anything).
+    const safeName = userName?.replace(/[^\p{L}\p{M}' .-]/gu, '').trim().slice(0, 50);
+    if (safeName) {
+      systemPrompt += `\n\n=== STUDENT PROFILE ===\nThe student's name is "${safeName}". Address them warmly by name when greeting or encouraging them.`;
     }
 
     if (summary) {

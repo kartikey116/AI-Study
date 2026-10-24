@@ -147,7 +147,7 @@ model DocumentChunk {
   chunkIndex  Int
   text        String
   contentHash String
-  embedding   Unsupported("vector(3072)")?
+  embedding   Unsupported("vector(768)")? // HNSW + GIN indexes: scripts/post_db_push.ts
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

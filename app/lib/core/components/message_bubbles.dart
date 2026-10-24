@@ -6,6 +6,7 @@ import 'package:markdown/markdown.dart' as md;
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_radius.dart';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // LaTeX pre-processor
@@ -111,12 +112,7 @@ class AiMessageBubble extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // AI Robot Avatar
-          const CircleAvatar(
-            radius: 17,
-            backgroundColor: Color(0xFFF3E8FF),
-            child: Icon(Icons.smart_toy_rounded, color: Color(0xFF8B5CF6), size: 19),
-          ),
+          const AssistantMonogram(),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -126,21 +122,14 @@ class AiMessageBubble extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(4),
-                      topRight: Radius.circular(18),
-                      bottomLeft: Radius.circular(18),
-                      bottomRight: Radius.circular(18),
+                      topRight: Radius.circular(AppRadius.lg),
+                      bottomLeft: Radius.circular(AppRadius.lg),
+                      bottomRight: Radius.circular(AppRadius.lg),
                     ),
-                    border: Border.all(color: const Color(0xFFF1F5F9)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    border: Border.all(color: AppColors.line),
                   ),
                   child: MarkdownBody(
                     data: processed,
@@ -152,33 +141,34 @@ class AiMessageBubble extends StatelessWidget {
                     styleSheet: MarkdownStyleSheet(
                       p: bodyStyle.copyWith(
                         color: AppColors.textPrimary,
-                        height: 1.5,
-                        fontSize: 14.5,
+                        height: 1.55,
+                        fontSize: 15,
                       ),
-                      h1: bodyStyle.copyWith(
-                          fontSize: 20, fontWeight: FontWeight.bold, height: 1.4, color: AppColors.textPrimary),
-                      h2: bodyStyle.copyWith(
-                          fontSize: 18, fontWeight: FontWeight.bold, height: 1.4, color: AppColors.textPrimary),
+                      h1: AppTypography.heading3.copyWith(fontSize: 21, height: 1.3),
+                      h2: AppTypography.heading3.copyWith(fontSize: 18, height: 1.3),
                       h3: bodyStyle.copyWith(
                           fontSize: 15, fontWeight: FontWeight.w700, height: 1.4, color: AppColors.textPrimary),
                       codeblockPadding: const EdgeInsets.all(12),
                       codeblockDecoration: BoxDecoration(
-                        color: const Color(0xFF1E293B),
-                        borderRadius: BorderRadius.circular(10),
+                        color: AppColors.ink,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      code: const TextStyle(
-                        fontFamily: 'monospace',
+                      code: AppTypography.mono.copyWith(
                         fontSize: 12.5,
-                        color: Color(0xFF38BDF8),
+                        color: AppColors.highlighter,
+                        backgroundColor: Colors.transparent,
                       ),
                       blockquote: bodyStyle.copyWith(fontStyle: FontStyle.italic, color: AppColors.textSecondary),
-                      blockquoteDecoration: BoxDecoration(
-                        border: const Border(left: BorderSide(color: AppColors.primary, width: 3)),
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(4),
+                      blockquoteDecoration: const BoxDecoration(
+                        border: Border(left: BorderSide(color: AppColors.highlighter, width: 3)),
+                        color: AppColors.paper,
                       ),
-                      listBullet: bodyStyle.copyWith(color: AppColors.primary),
-                      strong: bodyStyle.copyWith(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      listBullet: bodyStyle.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
+                      strong: bodyStyle.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                        backgroundColor: AppColors.highlighterSoft,
+                      ),
                     ),
                   ),
                 ),
@@ -191,15 +181,14 @@ class AiMessageBubble extends StatelessWidget {
                     children: [
                       Text(
                         timestamp ?? '9:41 AM',
-                        style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                        style: AppTypography.label.copyWith(fontSize: 10, letterSpacing: 0.4),
                       ),
                       if (!isStreaming && text.isNotEmpty)
-                        GestureDetector(
-                          onTap: () => _copy(context),
-                          child: Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: Icon(Icons.copy_outlined, size: 12, color: Colors.grey.shade400),
-                          ),
+                        IconButton(
+                          onPressed: () => _copy(context),
+                          tooltip: 'Copy reply',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.copy_rounded, size: 16, color: AppColors.textMuted),
                         ),
                     ],
                   ),
@@ -259,7 +248,7 @@ class _PulsingDotState extends State<_PulsingDot>
         width: 7,
         height: 7,
         decoration: const BoxDecoration(
-          color: AppColors.primary,
+          color: AppColors.ink,
           shape: BoxShape.circle,
         ),
       ),
@@ -281,25 +270,14 @@ class AiTypingIndicator extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CircleAvatar(
-            radius: 17,
-            backgroundColor: Color(0xFFF3E8FF),
-            child: Icon(Icons.smart_toy_rounded, color: Color(0xFF8B5CF6), size: 19),
-          ),
+          const AssistantMonogram(),
           const SizedBox(width: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFF1F5F9)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.line),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -347,19 +325,19 @@ class UserMessageBubble extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFEDE9FE), // Soft Lavender
+                    color: AppColors.ink,
                     borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(18),
+                      topLeft: Radius.circular(AppRadius.lg),
                       topRight: Radius.circular(4),
-                      bottomLeft: Radius.circular(18),
-                      bottomRight: Radius.circular(18),
+                      bottomLeft: Radius.circular(AppRadius.lg),
+                      bottomRight: Radius.circular(AppRadius.lg),
                     ),
                   ),
                   child: Text(
                     text,
-                    style: const TextStyle(
-                      color: Color(0xFF1E293B),
-                      fontSize: 14.5,
+                    style: AppTypography.bodyLarge.copyWith(
+                      color: AppColors.onInk,
+                      fontSize: 15,
                       height: 1.45,
                     ),
                   ),
@@ -368,19 +346,40 @@ class UserMessageBubble extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 4, right: 4),
                   child: Text(
                     timestamp ?? '9:42 AM',
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+                    style: AppTypography.label.copyWith(fontSize: 10, letterSpacing: 0.4),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.grey.shade200,
-            child: Icon(Icons.person_rounded, size: 18, color: Colors.grey.shade700),
-          ),
         ],
+      ),
+    );
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Assistant monogram — a serif "S" stamp instead of a robot icon
+// ──────────────────────────────────────────────────────────────────────────────
+
+class AssistantMonogram extends StatelessWidget {
+  final double size;
+  const AssistantMonogram({super.key, this.size = 32});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.highlighter,
+        borderRadius: BorderRadius.circular(AppRadius.sm + 2),
+        border: Border.all(color: AppColors.ink, width: 1.5),
+      ),
+      child: Text(
+        'S',
+        style: AppTypography.heading3.copyWith(fontSize: size * 0.55, height: 1),
       ),
     );
   }

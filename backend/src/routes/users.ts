@@ -2,15 +2,17 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../utils/db.util';
 import { authenticate } from '../middleware/auth.middleware';
 import { z } from 'zod';
+import { personName } from '../utils/validation.util';
 
 const router = Router();
 
 // Require authentication for all user routes
 router.use(authenticate);
 
+// Names are shown to the AI tutor, so they're length- and character-restricted
 const updateProfileSchema = z.object({
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  firstName: personName.optional(),
+  lastName: personName.optional(),
 });
 
 // GET /users/me

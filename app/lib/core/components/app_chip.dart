@@ -21,17 +21,15 @@ class AppChip extends StatelessWidget {
       label: Text(
         label,
         style: AppTypography.bodySmall.copyWith(
-          color: AppColors.primaryDark,
-          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
         ),
       ),
-      avatar: icon != null 
-          ? Icon(icon, size: 16, color: AppColors.primaryDark) 
-          : null,
-      backgroundColor: AppColors.primaryLight.withOpacity(0.3),
+      avatar: icon != null ? Icon(icon, size: 16, color: AppColors.primary) : null,
+      backgroundColor: AppColors.surface,
+      side: const BorderSide(color: AppColors.line),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        side: BorderSide.none,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
       onPressed: onTap ?? () {},
     );

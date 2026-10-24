@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 
 class ProgressRing extends StatelessWidget {
   final double progress; // 0.0 to 1.0
   final double size;
   final Widget? centerChild;
+  final Color color;
 
   const ProgressRing({
     super.key,
     required this.progress,
     this.size = 100.0,
     this.centerChild,
+    this.color = AppColors.primary,
   });
 
   @override
@@ -25,21 +26,17 @@ class ProgressRing extends StatelessWidget {
           SizedBox(
             width: size,
             height: size,
-            child: CircularProgressIndicator(
-              value: 1.0,
-              strokeWidth: 8,
-              color: AppColors.background,
-            ),
-          ),
-          SizedBox(
-            width: size,
-            height: size,
-            child: CircularProgressIndicator(
-              value: progress,
-              strokeWidth: 8,
-              backgroundColor: Colors.transparent,
-              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
-              strokeCap: StrokeCap.round,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress.clamp(0.0, 1.0)),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => CircularProgressIndicator(
+                value: value,
+                strokeWidth: 8,
+                backgroundColor: AppColors.surfaceSunken,
+                valueColor: AlwaysStoppedAnimation<Color>(color),
+                strokeCap: StrokeCap.round,
+              ),
             ),
           ),
           if (centerChild != null) centerChild!,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
 import 'app_button.dart';
 
 class ErrorState extends StatelessWidget {
@@ -22,10 +23,18 @@ class ErrorState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.errorSoft,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+              child: const Icon(Icons.error_outline_rounded, size: 36, color: AppColors.error),
+            ),
             const SizedBox(height: AppSpacing.lg),
             Text(
-              'Oops!',
+              "That didn't load",
               style: AppTypography.heading2,
               textAlign: TextAlign.center,
             ),
@@ -37,7 +46,7 @@ class ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.lg),
             AppButton(
-              text: 'Try Again',
+              text: 'Try again',
               onPressed: onRetry,
               isPrimary: false,
             ),

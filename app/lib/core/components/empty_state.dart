@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_radius.dart';
 import 'app_button.dart';
 
 class EmptyState extends StatelessWidget {
@@ -29,20 +30,26 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: AppColors.background,
-                shape: BoxShape.circle,
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: AppColors.highlighterSoft,
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                border: Border.all(color: AppColors.ink, width: 1.5),
+                boxShadow: AppShadows.hard,
               ),
-              child: Icon(icon, size: 64, color: AppColors.textMuted),
+              child: Icon(icon, size: 40, color: AppColors.ink),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(title, style: AppTypography.heading2, textAlign: TextAlign.center),
             const SizedBox(height: AppSpacing.sm),
-            Text(
-              message,
-              style: AppTypography.bodyMedium,
-              textAlign: TextAlign.center,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: Text(
+                message,
+                style: AppTypography.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
             ),
             if (buttonText != null && onAction != null) ...[
               const SizedBox(height: AppSpacing.lg),

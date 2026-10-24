@@ -45,9 +45,9 @@ class AppTextField extends StatelessWidget {
       children: [
         Text(
           label,
-          style: AppTypography.bodyMedium.copyWith(
+          style: AppTypography.bodySmall.copyWith(
             fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
+            color: AppColors.textSecondary,
           ),
         ),
         const SizedBox(height: 8),

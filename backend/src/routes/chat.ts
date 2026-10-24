@@ -1,12 +1,21 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { z } from 'zod';
+import { Role, DocumentStatus } from '@prisma/client';
 import { authenticate } from '../middleware/auth.middleware';
+import { chatLimiter } from '../middleware/rate-limit.middleware';
 import { prisma } from '../utils/db.util';
+import { uuid, validateBody } from '../utils/validation.util';
 import { StudyOrchestrator } from '../ai/orchestrator';
 import { CoreMessage } from 'ai';
 
 const router = Router();
 const orchestrator = new StudyOrchestrator();
+
+const chatSchema = z.object({
+  message: z.string().trim().min(1).max(4000),
+  conversationId: uuid.optional(),
+  documentId: z.union([z.literal('ALL'), z.literal('GENERAL'), uuid]).optional(),
+});
 
 // Apply auth middleware to all chat routes
 router.use(authenticate);
@@ -60,13 +69,26 @@ router.get('/conversations/:id', async (req: Request, res: Response): Promise<an
 });
 
 // POST /chat
-router.post('/', async (req: Request, res: Response): Promise<any> => {
+router.post('/', chatLimiter, validateBody(chatSchema), async (req: Request, res: Response): Promise<any> => {
   try {
     const userId = req.userId!;
-    const { message, conversationId, documentId } = req.body;
+    const { message, conversationId, documentId } = req.body as z.infer<typeof chatSchema>;
 
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
+    // ISOLATION: a conversation or document id from the client is only usable if it
+    // belongs to this user. Checked before anything is read, written, or sent to the AI.
+    if (conversationId) {
+      const owned = await prisma.conversation.findFirst({
+        where: { id: conversationId, userId },
+        select: { id: true },
+      });
+      if (!owned) return res.status(404).json({ error: 'Conversation not found' });
+    }
+    if (documentId && documentId !== 'ALL' && documentId !== 'GENERAL') {
+      const owned = await prisma.document.findFirst({
+        where: { id: documentId, userId, status: DocumentStatus.READY },
+        select: { id: true },
+      });
+      if (!owned) return res.status(404).json({ error: 'Document not found' });
     }
 
     let currentConversationId = conversationId;
@@ -84,14 +106,15 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
       currentConversationId = conversation.id;
     } else {
       // Fetch recent messages and summary
-      const conversation = await prisma.conversation.findUnique({
-        where: { id: currentConversationId },
+      // userId stays in every query as defense in depth, even after the ownership check
+      const conversation = await prisma.conversation.findFirst({
+        where: { id: currentConversationId, userId },
         select: { summary: true }
       });
       summary = conversation?.summary || null;
 
       recentMessages = await prisma.message.findMany({
-        where: { conversationId: currentConversationId },
+        where: { conversationId: currentConversationId, conversation: { userId } },
         orderBy: { createdAt: 'desc' },
         take: 10, // Only send the last 10 messages for context
       });
@@ -176,12 +199,12 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
     }).catch(console.error);
 
     // Trigger summarization if needed (e.g., > 10 messages)
-    const totalMessages = await prisma.message.count({ where: { conversationId: currentConversationId } });
+    const totalMessages = await prisma.message.count({ where: { conversationId: currentConversationId, conversation: { userId } } });
     if (totalMessages > 10 && totalMessages % 5 === 0) {
       // Async summarize
       orchestrator.summarizeConversation(coreMessages).then(async ({ summary, costData }) => {
-        await prisma.conversation.update({
-          where: { id: currentConversationId },
+        await prisma.conversation.updateMany({
+          where: { id: currentConversationId, userId },
           data: { summary }
         });
         await orchestrator.logCost(userId, costData);

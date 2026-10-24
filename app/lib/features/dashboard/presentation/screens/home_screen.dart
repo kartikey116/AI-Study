@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/layout/main_layout.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../../../quiz/presentation/providers/quiz_provider.dart';
 import '../../../flashcard/presentation/providers/flashcard_provider.dart';
+
+const _weekdays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+const _months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -19,143 +25,99 @@ class HomeScreen extends ConsumerWidget {
         : (user?.email.split('@').first ?? 'kartikey');
 
     final dashboardAsync = ref.watch(dashboardProvider);
+    final now = DateTime.now();
+    final dateLabel = '${_weekdays[now.weekday - 1]} · ${now.day} ${_months[now.month - 1]}';
 
     return MainLayout(
       currentIndex: 0,
       child: Container(
-        color: const Color(0xFFF7F6FD),
+        color: AppColors.paper,
         child: SingleChildScrollView(
           padding: EdgeInsets.only(
-            top: MediaQuery.of(context).padding.top + 10,
+            top: MediaQuery.of(context).padding.top + 12,
             bottom: 32,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── 1. Top Bar: Avatar + Greeting + Notification Bell ───────────
+              // ── 1. Top Bar: Monogram + Greeting + Menu ──────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Avatar + Greeting
+                    // User monogram
+                    Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.highlighterSoft,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: AppColors.ink, width: 1.5),
+                      ),
+                      child: Text(
+                        firstName.isNotEmpty ? firstName[0].toUpperCase() : 'S',
+                        style: AppTypography.heading3.copyWith(fontSize: 22, height: 1),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Date & Greeting
                     Expanded(
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // User Avatar Circle
-                          Container(
-                            width: 46,
-                            height: 46,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(23),
-                              child: Container(
-                                color: const Color(0xFFE2E8F0),
-                                child: const Icon(
-                                  Icons.person_rounded,
-                                  color: Color(0xFF64748B),
-                                  size: 28,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Name & Subtitle
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Hello, $firstName! 👋',
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: Color(0xFF0F172A),
-                                    letterSpacing: -0.3,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                RichText(
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  text: const TextSpan(
-                                    text: 'Level up your skills with ',
-                                    style: TextStyle(
-                                      color: Color(0xFF64748B),
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    children: [
-                                      TextSpan(
-                                        text: 'StudyAI',
-                                        style: TextStyle(
-                                          color: Color(0xFF7C3AED),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                          Text(dateLabel, style: AppTypography.label),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Hello, $firstName',
+                            style: AppTypography.heading2.copyWith(fontSize: 24),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-
-                    // Notification Bell Button with Red Badge Dot
-                    GestureDetector(
-                      onTap: () => _showQuickNavigationSheet(context, ref),
-                      child: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.06),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                    const SizedBox(width: 8),
+                    // Quick navigation button with badge dot
+                    Tooltip(
+                      message: 'Quick navigation',
+                      child: Material(
+                        color: AppColors.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          side: const BorderSide(color: AppColors.line),
                         ),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            const Icon(
-                              Icons.notifications_rounded,
-                              color: Color(0xFF1E293B),
-                              size: 22,
-                            ),
-                            // Red Badge Dot
-                            Positioned(
-                              top: 9,
-                              right: 10,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4444),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 1.5),
+                        child: InkWell(
+                          onTap: () => _showQuickNavigationSheet(context, ref),
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          child: SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.notifications_none_rounded,
+                                  color: AppColors.ink,
+                                  size: 22,
                                 ),
-                              ),
+                                Positioned(
+                                  top: 10,
+                                  right: 11,
+                                  child: Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accent,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: AppColors.surface, width: 1.5),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -163,7 +125,29 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SizedBox(height: 18),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(72, 6, 16, 0),
+                child: Text.rich(
+                  TextSpan(
+                    text: 'Level up your skills with ',
+                    style: AppTypography.bodyMedium,
+                    children: [
+                      TextSpan(
+                        text: ' StudyAI ',
+                        style: AppTypography.bodyMedium.copyWith(
+                          color: AppColors.ink,
+                          fontWeight: FontWeight.w700,
+                          backgroundColor: AppColors.highlighter,
+                        ),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+
+              const SizedBox(height: 20),
 
               // ── 2. 4-Card Stats Row ─────────────────────────────────────────
               Padding(
@@ -179,9 +163,9 @@ class HomeScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: _StatCard(
-                            icon: Icons.access_time_filled_rounded,
-                            iconColor: const Color(0xFF7C3AED),
-                            iconBgColor: const Color(0xFFEDE9FE),
+                            icon: Icons.schedule_rounded,
+                            iconColor: AppColors.primary,
+                            iconBgColor: AppColors.primarySoft,
                             value: studyTime,
                             label: 'Study Time',
                           ),
@@ -189,9 +173,9 @@ class HomeScreen extends ConsumerWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _StatCard(
-                            icon: Icons.check_box_rounded,
-                            iconColor: const Color(0xFF10B981),
-                            iconBgColor: const Color(0xFFDCFCE7),
+                            icon: Icons.task_alt_rounded,
+                            iconColor: AppColors.success,
+                            iconBgColor: AppColors.successSoft,
                             value: tasksDone,
                             label: 'Tasks Done',
                           ),
@@ -200,8 +184,8 @@ class HomeScreen extends ConsumerWidget {
                         Expanded(
                           child: _StatCard(
                             icon: Icons.local_fire_department_rounded,
-                            iconColor: const Color(0xFFF97316),
-                            iconBgColor: const Color(0xFFFFEDD5),
+                            iconColor: AppColors.accent,
+                            iconBgColor: AppColors.accentLight,
                             value: streak.contains('Day') ? streak : '$streak Days',
                             label: 'Streak',
                           ),
@@ -209,9 +193,9 @@ class HomeScreen extends ConsumerWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _StatCard(
-                            icon: Icons.bar_chart_rounded,
-                            iconColor: const Color(0xFF7C3AED),
-                            iconBgColor: const Color(0xFFEDE9FE),
+                            icon: Icons.trending_up_rounded,
+                            iconColor: AppColors.info,
+                            iconBgColor: AppColors.infoSoft,
                             value: level,
                             label: 'Learner',
                           ),
@@ -219,137 +203,30 @@ class HomeScreen extends ConsumerWidget {
                       ],
                     );
                   },
-                  loading: () => const Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.access_time_filled_rounded,
-                          iconColor: Color(0xFF7C3AED),
-                          iconBgColor: Color(0xFFEDE9FE),
-                          value: '12h 30m',
-                          label: 'Study Time',
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.check_box_rounded,
-                          iconColor: Color(0xFF10B981),
-                          iconBgColor: Color(0xFFDCFCE7),
-                          value: '8',
-                          label: 'Tasks Done',
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.local_fire_department_rounded,
-                          iconColor: Color(0xFFF97316),
-                          iconBgColor: Color(0xFFFFEDD5),
-                          value: '12 Days',
-                          label: 'Streak',
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.bar_chart_rounded,
-                          iconColor: Color(0xFF7C3AED),
-                          iconBgColor: Color(0xFFEDE9FE),
-                          value: 'Level 3',
-                          label: 'Learner',
-                        ),
-                      ),
-                    ],
-                  ),
-                  error: (_, __) => const Row(
-                    children: [
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.access_time_filled_rounded,
-                          iconColor: Color(0xFF7C3AED),
-                          iconBgColor: Color(0xFFEDE9FE),
-                          value: '12h 30m',
-                          label: 'Study Time',
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.check_box_rounded,
-                          iconColor: Color(0xFF10B981),
-                          iconBgColor: Color(0xFFDCFCE7),
-                          value: '8',
-                          label: 'Tasks Done',
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.local_fire_department_rounded,
-                          iconColor: Color(0xFFF97316),
-                          iconBgColor: Color(0xFFFFEDD5),
-                          value: '12 Days',
-                          label: 'Streak',
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: _StatCard(
-                          icon: Icons.bar_chart_rounded,
-                          iconColor: Color(0xFF7C3AED),
-                          iconBgColor: Color(0xFFEDE9FE),
-                          value: 'Level 3',
-                          label: 'Learner',
-                        ),
-                      ),
-                    ],
-                  ),
+                  loading: () => const _StatsRowFallback(),
+                  error: (_, __) => const _StatsRowFallback(),
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
 
-              // ── 3. AI Hero Card with Mascot ─────────────────────────────────
+              // ── 3. Hero Card ────────────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 20, 0),
                 child: _AiHeroCard(
                   onTap: () => context.push('/quiz-setup'),
                 ),
               ),
 
-              const SizedBox(height: 22),
+              const SizedBox(height: 28),
 
               // ── 4. Quick Actions Header & 2x2 Grid ──────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Quick Actions',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => _showQuickNavigationSheet(context, ref),
-                      child: const Text(
-                        'See All',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF7C3AED),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              _SectionHeader(
+                title: 'Quick actions',
+                actionLabel: 'See all',
+                onAction: () => _showQuickNavigationSheet(context, ref),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
@@ -358,20 +235,20 @@ class HomeScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: _QuickActionCard(
-                            icon: Icons.smart_toy_rounded,
-                            iconColor: const Color(0xFF6366F1),
-                            iconBgColor: const Color(0xFFEDE9FE),
+                            icon: Icons.forum_outlined,
+                            iconColor: AppColors.primary,
+                            iconBgColor: AppColors.primarySoft,
                             title: 'AI Tutor',
                             subtitle: 'Ask, learn, explore',
                             onTap: () => context.go('/chat'),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: _QuickActionCard(
-                            icon: Icons.timer_rounded,
-                            iconColor: const Color(0xFF10B981),
-                            iconBgColor: const Color(0xFFDCFCE7),
+                            icon: Icons.timer_outlined,
+                            iconColor: AppColors.accent,
+                            iconBgColor: AppColors.accentLight,
                             title: 'Focus Timer',
                             subtitle: 'Start a 25-min session',
                             onTap: () => context.push('/timer'),
@@ -379,25 +256,25 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(
                           child: _QuickActionCard(
-                            icon: Icons.quiz_rounded,
-                            iconColor: const Color(0xFF9333EA),
-                            iconBgColor: const Color(0xFFF3E8FF),
+                            icon: Icons.quiz_outlined,
+                            iconColor: AppColors.tagSlate,
+                            iconBgColor: AppColors.infoSoft,
                             title: 'Quizzes & Tests',
                             subtitle: 'Test your knowledge',
                             onTap: () => context.push('/quizzes'),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(
                           child: _QuickActionCard(
-                            icon: Icons.style_rounded,
-                            iconColor: const Color(0xFFEA580C),
-                            iconBgColor: const Color(0xFFFFEDD5),
+                            icon: Icons.style_outlined,
+                            iconColor: AppColors.tagOchre,
+                            iconBgColor: AppColors.highlighterSoft,
                             title: 'Flashcard Decks',
                             subtitle: 'Spaced repetition',
                             onTap: () => _showFlashcardsBottomSheet(context, ref),
@@ -409,38 +286,15 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SizedBox(height: 22),
+              const SizedBox(height: 28),
 
               // ── 5. Recent Quizzes Header & List ─────────────────────────────
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Recent Quizzes',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => context.push('/quizzes'),
-                      child: const Text(
-                        'View All →',
-                        style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF7C3AED),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+              _SectionHeader(
+                title: 'Recent quizzes',
+                actionLabel: 'View all',
+                onAction: () => context.push('/quizzes'),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: _RecentQuizzesSection(),
@@ -454,8 +308,109 @@ class HomeScreen extends ConsumerWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Section header: serif title + text action
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final String title;
+  final String actionLabel;
+  final VoidCallback onAction;
+
+  const _SectionHeader({
+    required this.title,
+    required this.actionLabel,
+    required this.onAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: AppTypography.heading3),
+          TextButton(
+            onPressed: onAction,
+            style: TextButton.styleFrom(foregroundColor: AppColors.ink),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  actionLabel,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.ink,
+                    fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.underline,
+                    decorationColor: AppColors.highlighter,
+                    decorationThickness: 3,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.ink),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 1. Stats Card (Study Time, Tasks Done, Streak, Learner)
 // ─────────────────────────────────────────────────────────────────────────────
+
+class _StatsRowFallback extends StatelessWidget {
+  const _StatsRowFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Expanded(
+          child: _StatCard(
+            icon: Icons.schedule_rounded,
+            iconColor: AppColors.primary,
+            iconBgColor: AppColors.primarySoft,
+            value: '12h 30m',
+            label: 'Study Time',
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: _StatCard(
+            icon: Icons.task_alt_rounded,
+            iconColor: AppColors.success,
+            iconBgColor: AppColors.successSoft,
+            value: '8',
+            label: 'Tasks Done',
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: _StatCard(
+            icon: Icons.local_fire_department_rounded,
+            iconColor: AppColors.accent,
+            iconBgColor: AppColors.accentLight,
+            value: '12 Days',
+            label: 'Streak',
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: _StatCard(
+            icon: Icons.trending_up_rounded,
+            iconColor: AppColors.info,
+            iconBgColor: AppColors.infoSoft,
+            value: 'Level 3',
+            label: 'Learner',
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _StatCard extends StatelessWidget {
   final IconData icon;
@@ -475,41 +430,34 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+      padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.line),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 34,
-            height: 34,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               color: iconBgColor,
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(AppRadius.sm),
             ),
-            child: Icon(icon, color: iconColor, size: 18),
+            child: Icon(icon, color: iconColor, size: 16),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           FittedBox(
             fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
+              style: AppTypography.mono.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
               maxLines: 1,
             ),
@@ -517,13 +465,10 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 2),
           FittedBox(
             fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF64748B),
-              ),
+              label.toUpperCase(),
+              style: AppTypography.label.copyWith(fontSize: 9, letterSpacing: 0.8),
               maxLines: 1,
             ),
           ),
@@ -534,7 +479,7 @@ class _StatCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2. AI Hero Card with Cute 3D Mascot Robot
+// 2. Hero Card — ink block with a highlighter offset shadow
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _AiHeroCard extends StatelessWidget {
@@ -546,120 +491,80 @@ class _AiHeroCard extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF6D28D9),
-            Color(0xFF9333EA),
-            Color(0xFFC084FC),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.32),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: AppColors.ink, width: 1.5),
+        boxShadow: const [
+          BoxShadow(color: AppColors.highlighter, offset: Offset(4, 4)),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(18, 18, 14, 18),
+        child: Row(
           children: [
-            // Background soft decorative glow circles
-            Positioned(
-              right: -20,
-              bottom: -20,
-              child: Container(
-                width: 140,
-                height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.12),
-                ),
-              ),
-            ),
-            Positioned(
-              left: 40,
-              top: -30,
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
-              ),
-            ),
-
-            // Card Content
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 12, 18),
-              child: Row(
+            // Text & Button on Left
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Text & Button on Left
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Text(
-                          'Try generating a quiz from your uploaded documents to test your knowledge!',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            height: 1.35,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 14),
-                        GestureDetector(
-                          onTap: onTap,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0F0728),
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.2),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Start with AI',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                SizedBox(width: 6),
-                                Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 14),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
+                  Text(
+                    "TODAY'S SUGGESTION",
+                    style: AppTypography.label.copyWith(color: AppColors.highlighter),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Turn your notes into a quiz.',
+                    style: AppTypography.heading3.copyWith(
+                      color: AppColors.onInk,
+                      fontSize: 21,
                     ),
                   ),
-
-                  const SizedBox(width: 10),
-
-                  // Mascot on Right
-                  const _CuteRobotMascot(),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Try generating a quiz from your uploaded documents to test your knowledge!',
+                    style: AppTypography.bodySmall.copyWith(
+                      color: AppColors.onInk.withValues(alpha: 0.72),
+                      fontSize: 12.5,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 14),
+                  Material(
+                    color: AppColors.highlighter,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      child: Container(
+                        constraints: const BoxConstraints(minHeight: 44),
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Generate a quiz',
+                              style: AppTypography.button.copyWith(
+                                color: AppColors.ink,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_forward_rounded, color: AppColors.ink, size: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
+
+            const SizedBox(width: 12),
+
+            // Illustration on Right
+            const _QuizStackArt(),
           ],
         ),
       ),
@@ -668,130 +573,95 @@ class _AiHeroCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3. Cute 3D Robot Mascot Widget
+// 3. Quiz card stack illustration (replaces the robot mascot)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _CuteRobotMascot extends StatelessWidget {
-  const _CuteRobotMascot();
+class _QuizStackArt extends StatelessWidget {
+  const _QuizStackArt();
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 96,
-      height: 96,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Sparkle ✦ on top left
-          const Positioned(
-            left: 2,
-            top: 6,
-            child: Text(
-              '✦',
-              style: TextStyle(color: Color(0xFFFDE047), fontSize: 13, fontWeight: FontWeight.bold),
+    return ExcludeSemantics(
+      child: SizedBox(
+        width: 92,
+        height: 108,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Transform.rotate(
+              angle: -0.14,
+              child: _paperCard(color: AppColors.primaryLight),
             ),
-          ),
-          // Sparkle ✦ on bottom right
-          const Positioned(
-            right: 4,
-            bottom: 8,
-            child: Text(
-              '✦',
-              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-            ),
-          ),
-
-          // Robot Outer Body / Head
-          Container(
-            width: 82,
-            height: 72,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Colors.white, Color(0xFFEDE9FE)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+            Transform.rotate(
+              angle: 0.07,
+              child: _paperCard(
+                color: AppColors.surface,
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Q.04', style: AppTypography.label.copyWith(fontSize: 9, color: AppColors.ink)),
+                      const SizedBox(height: 6),
+                      _line(52),
+                      const SizedBox(height: 4),
+                      _line(38),
+                      const SizedBox(height: 10),
+                      _option(false),
+                      const SizedBox(height: 5),
+                      _option(true),
+                      const SizedBox(height: 5),
+                      _option(false),
+                    ],
+                  ),
+                ),
               ),
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.14),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Top Little Antenna
-                Positioned(
-                  top: 2,
-                  child: Container(
-                    width: 6,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                ),
-
-                // Dark Screen / Visor
-                Container(
-                  width: 66,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2E1065),
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Cute Eyes: >   <
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '>',
-                              style: TextStyle(
-                                color: Color(0xFFE0E7FF),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                height: 1.0,
-                              ),
-                            ),
-                            SizedBox(width: 4),
-                            // Smiling Mouth v
-                            Text(
-                              'v',
-                              style: TextStyle(
-                                color: Color(0xFFF472B6),
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              '<',
-                              style: TextStyle(
-                                color: Color(0xFFE0E7FF),
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                height: 1.0,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  static Widget _paperCard({required Color color, Widget? child}) {
+    return Container(
+      width: 74,
+      height: 94,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: Border.all(color: AppColors.ink, width: 1.5),
+      ),
+      child: child,
+    );
+  }
+
+  static Widget _line(double width) {
+    return Container(
+      width: width,
+      height: 3,
+      decoration: BoxDecoration(
+        color: AppColors.lineStrong,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    );
+  }
+
+  static Widget _option(bool selected) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: selected ? AppColors.highlighter : Colors.transparent,
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.ink, width: 1.2),
+          ),
+        ),
+        const SizedBox(width: 5),
+        _line(selected ? 34 : 28),
+      ],
     );
   }
 }
@@ -819,64 +689,53 @@ class _QuickActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Row: Icon on left, Chevron on right
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: iconBgColor,
-                    borderRadius: BorderRadius.circular(10),
+    final radius = BorderRadius.circular(AppRadius.lg);
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: const BorderSide(color: AppColors.line),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Row: Icon on left, arrow on right
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 20),
                   ),
-                  child: Icon(icon, color: iconColor, size: 20),
-                ),
-                Icon(Icons.chevron_right_rounded, color: iconColor.withValues(alpha: 0.7), size: 18),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
+                  const Icon(Icons.north_east_rounded, color: AppColors.textMuted, size: 16),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w400,
-                color: Color(0xFF64748B),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: AppTypography.title.copyWith(fontSize: 14.5),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: AppTypography.bodySmall,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -905,9 +764,10 @@ class _RecentQuizzesSection extends ConsumerWidget {
           return _buildMockQuizzesList(context);
         }
 
-        // Display user's actual recent quizzes using the exact design
+        // Display user's actual recent quizzes
         return Column(
-          children: quizzes.take(3).map((quiz) {
+          children: quizzes.take(3).toList().asMap().entries.map((entry) {
+            final quiz = entry.value;
             final id = quiz['id']?.toString() ?? '';
             final title = quiz['title']?.toString() ?? 'Quiz';
             final questionsCount = (quiz['questions'] as List?)?.length ?? 10;
@@ -917,14 +777,15 @@ class _RecentQuizzesSection extends ConsumerWidget {
             final isCompleted = hasAttempt;
 
             return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 8),
               child: _RecentQuizItemCard(
                 title: title,
-                subtitle: '$questionsCount Questions • ⭐ ${score ?? 80}%',
+                subtitle: '$questionsCount questions · ${score ?? 80}%',
                 icon: Icons.storage_rounded,
+                tint: AppColors.tags[entry.key % AppColors.tags.length],
                 statusText: isCompleted ? 'Completed' : 'In Progress',
-                statusBgColor: isCompleted ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
-                statusTextColor: isCompleted ? const Color(0xFF16A34A) : const Color(0xFFD97706),
+                statusBgColor: isCompleted ? AppColors.successSoft : AppColors.warningSoft,
+                statusTextColor: isCompleted ? AppColors.success : AppColors.warning,
                 onTap: () => context.push('/quiz/$id'),
               ),
             );
@@ -939,21 +800,23 @@ class _RecentQuizzesSection extends ConsumerWidget {
       children: [
         _RecentQuizItemCard(
           title: 'DBMS – Normalization',
-          subtitle: '10 Questions • ⭐ 85%',
+          subtitle: '10 questions · 85%',
           icon: Icons.storage_rounded,
+          tint: AppColors.tagSage,
           statusText: 'Completed',
-          statusBgColor: const Color(0xFFDCFCE7),
-          statusTextColor: const Color(0xFF16A34A),
+          statusBgColor: AppColors.successSoft,
+          statusTextColor: AppColors.success,
           onTap: () => context.push('/quizzes'),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         _RecentQuizItemCard(
           title: 'Operating Systems',
-          subtitle: '15 Questions • ⭐ 60%',
-          icon: Icons.settings_suggest_rounded,
+          subtitle: '15 questions · 60%',
+          icon: Icons.memory_rounded,
+          tint: AppColors.tagClay,
           statusText: 'In Progress',
-          statusBgColor: const Color(0xFFFEF3C7),
-          statusTextColor: const Color(0xFFD97706),
+          statusBgColor: AppColors.warningSoft,
+          statusTextColor: AppColors.warning,
           onTap: () => context.push('/quizzes'),
         ),
       ],
@@ -965,6 +828,7 @@ class _RecentQuizItemCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final IconData icon;
+  final Color tint;
   final String statusText;
   final Color statusBgColor;
   final Color statusTextColor;
@@ -974,6 +838,7 @@ class _RecentQuizItemCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
+    required this.tint,
     required this.statusText,
     required this.statusBgColor,
     required this.statusTextColor,
@@ -982,84 +847,76 @@ class _RecentQuizItemCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF1F5F9), width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Left circular icon
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEDE9FE),
-                borderRadius: BorderRadius.circular(12),
+    final radius = BorderRadius.circular(AppRadius.lg);
+    return Material(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: radius,
+        side: const BorderSide(color: AppColors.line),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              // Subject tile
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: tint.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Icon(icon, color: tint, size: 20),
               ),
-              child: Icon(icon, color: const Color(0xFF7C3AED), size: 20),
-            ),
-            const SizedBox(width: 12),
-            // Middle Title & Subtitle
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF0F172A),
+              const SizedBox(width: 12),
+              // Title & Subtitle
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: AppTypography.title.copyWith(fontSize: 14.5),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF64748B),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTypography.mono.copyWith(
+                        fontSize: 11.5,
+                        color: AppColors.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Status Pill
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusBgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                statusText,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                  color: statusTextColor,
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded, color: Color(0xFF94A3B8), size: 18),
-          ],
+              const SizedBox(width: 8),
+              // Status tag
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusBgColor,
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                ),
+                child: Text(
+                  statusText,
+                  style: AppTypography.bodySmall.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: statusTextColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -1070,41 +927,48 @@ class _RecentQuizItemCard extends StatelessWidget {
 // Sheets: Quick Navigation & Flashcards
 // ─────────────────────────────────────────────────────────────────────────────
 
+Widget _sheetHandle() {
+  return Center(
+    child: Container(
+      width: 40,
+      height: 4,
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: AppColors.lineStrong,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+  );
+}
+
+const _sheetDecoration = BoxDecoration(
+  color: AppColors.surface,
+  borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+  border: Border(top: BorderSide(color: AppColors.line)),
+);
+
 void _showQuickNavigationSheet(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
+    showDragHandle: false,
     isScrollControlled: true,
     builder: (ctx) => Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      decoration: _sheetDecoration,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const Text(
-              'Quick Navigation Menu',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
-            ),
-            const SizedBox(height: 14),
+            _sheetHandle(),
+            Text('JUMP TO', style: AppTypography.label),
+            const SizedBox(height: 4),
+            Text('Quick navigation', style: AppTypography.heading3),
+            const SizedBox(height: 10),
             _QuickNavItem(
-              icon: Icons.auto_awesome,
-              color: const Color(0xFF8B5CF6),
+              icon: Icons.forum_outlined,
+              color: AppColors.primary,
               title: 'AI Tutor Chat',
               subtitle: 'Chat, ask doubts & get instant explanations',
               onTap: () {
@@ -1113,8 +977,8 @@ void _showQuickNavigationSheet(BuildContext context, WidgetRef ref) {
               },
             ),
             _QuickNavItem(
-              icon: Icons.quiz_rounded,
-              color: const Color(0xFFEC4899),
+              icon: Icons.quiz_outlined,
+              color: AppColors.tagSlate,
               title: 'Quizzes & Practice Tests',
               subtitle: 'Take tests, view history & practice',
               onTap: () {
@@ -1123,8 +987,8 @@ void _showQuickNavigationSheet(BuildContext context, WidgetRef ref) {
               },
             ),
             _QuickNavItem(
-              icon: Icons.style_rounded,
-              color: const Color(0xFFEA580C),
+              icon: Icons.style_outlined,
+              color: AppColors.tagOchre,
               title: 'Flashcard Decks',
               subtitle: 'Review cards with spaced repetition',
               onTap: () {
@@ -1133,8 +997,8 @@ void _showQuickNavigationSheet(BuildContext context, WidgetRef ref) {
               },
             ),
             _QuickNavItem(
-              icon: Icons.timer_rounded,
-              color: const Color(0xFF10B981),
+              icon: Icons.timer_outlined,
+              color: AppColors.accent,
               title: 'Focus Timer',
               subtitle: 'Pomodoro focus study sessions',
               onTap: () {
@@ -1143,8 +1007,8 @@ void _showQuickNavigationSheet(BuildContext context, WidgetRef ref) {
               },
             ),
             _QuickNavItem(
-              icon: Icons.calendar_month_rounded,
-              color: const Color(0xFF3B82F6),
+              icon: Icons.calendar_month_outlined,
+              color: AppColors.tagSage,
               title: 'Study Schedule',
               subtitle: 'Structured study planner',
               onTap: () {
@@ -1153,8 +1017,8 @@ void _showQuickNavigationSheet(BuildContext context, WidgetRef ref) {
               },
             ),
             _QuickNavItem(
-              icon: Icons.description_rounded,
-              color: const Color(0xFF6366F1),
+              icon: Icons.description_outlined,
+              color: AppColors.tagPlum,
               title: 'Documents & Notes',
               subtitle: 'Upload PDFs & study materials',
               onTap: () {
@@ -1187,19 +1051,20 @@ class _QuickNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 3),
+      contentPadding: const EdgeInsets.symmetric(vertical: 2),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
       leading: Container(
         width: 40,
         height: 40,
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.sm),
         ),
         child: Icon(icon, color: color, size: 22),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
-      trailing: const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
+      title: Text(title, style: AppTypography.title.copyWith(fontSize: 14.5)),
+      subtitle: Text(subtitle, style: AppTypography.bodySmall),
+      trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppColors.textMuted),
       onTap: onTap,
     );
   }
@@ -1209,41 +1074,30 @@ void _showFlashcardsBottomSheet(BuildContext context, WidgetRef ref) {
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
+    showDragHandle: false,
     isScrollControlled: true,
     builder: (ctx) {
       return Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
+        decoration: _sheetDecoration,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              _sheetHandle(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Flashcard Decks', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  Text('Flashcard decks', style: AppTypography.heading3),
                   TextButton.icon(
                     onPressed: () {
                       Navigator.pop(ctx);
                       context.go('/documents');
                     },
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('New Deck'),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.ink),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('New deck'),
                   ),
                 ],
               ),
@@ -1259,17 +1113,26 @@ void _showFlashcardsBottomSheet(BuildContext context, WidgetRef ref) {
                           child: Center(
                             child: Column(
                               children: [
-                                const Icon(Icons.style_outlined, size: 48, color: Colors.grey),
-                                const SizedBox(height: 12),
-                                const Text(
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.highlighterSoft,
+                                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                                    border: Border.all(color: AppColors.ink, width: 1.5),
+                                  ),
+                                  child: const Icon(Icons.style_outlined, size: 30, color: AppColors.ink),
+                                ),
+                                const SizedBox(height: 14),
+                                Text(
                                   'No flashcard decks yet',
-                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                  style: AppTypography.heading3.copyWith(fontSize: 18),
                                 ),
                                 const SizedBox(height: 6),
-                                const Text(
+                                Text(
                                   'Go to Documents and tap "Cards" on any PDF to generate flashcards!',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                                  style: AppTypography.bodyMedium,
                                 ),
                                 const SizedBox(height: 16),
                                 ElevatedButton.icon(
@@ -1277,8 +1140,8 @@ void _showFlashcardsBottomSheet(BuildContext context, WidgetRef ref) {
                                     Navigator.pop(ctx);
                                     context.go('/documents');
                                   },
-                                  icon: const Icon(Icons.upload_file, size: 18),
-                                  label: const Text('View Documents'),
+                                  icon: const Icon(Icons.upload_file_rounded, size: 18),
+                                  label: const Text('View documents'),
                                 ),
                               ],
                             ),
@@ -1304,25 +1167,38 @@ void _showFlashcardsBottomSheet(BuildContext context, WidgetRef ref) {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFFEDD5),
-                                  borderRadius: BorderRadius.circular(10),
+                                  color: AppColors.highlighterSoft,
+                                  borderRadius: BorderRadius.circular(AppRadius.sm),
                                 ),
-                                child: const Icon(Icons.style_rounded, color: Color(0xFFEA580C), size: 22),
+                                child: const Icon(Icons.style_rounded, color: AppColors.tagOchre, size: 22),
                               ),
-                              title: Text(deck['title'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text('$totalCount cards total • $dueCount due for review'),
+                              title: Text(
+                                deck['title'],
+                                style: AppTypography.title.copyWith(fontSize: 14.5),
+                              ),
+                              subtitle: Text(
+                                '$totalCount cards · $dueCount due',
+                                style: AppTypography.mono.copyWith(
+                                  fontSize: 11.5,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
                               trailing: ElevatedButton(
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFEA580C),
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  minimumSize: const Size(72, 40),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                                  ),
                                 ),
                                 onPressed: () {
                                   Navigator.pop(ctx);
                                   context.push('/flashcard/${deck['id']}');
                                 },
-                                child: const Text('Review', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                child: Text(
+                                  'Review',
+                                  style: AppTypography.button.copyWith(fontSize: 13),
+                                ),
                               ),
                             );
                           },
@@ -1338,7 +1214,10 @@ void _showFlashcardsBottomSheet(BuildContext context, WidgetRef ref) {
                     error: (e, _) => Center(
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
-                        child: Text('Error loading decks: $e'),
+                        child: Text(
+                          'Error loading decks: $e',
+                          style: AppTypography.bodyMedium.copyWith(color: AppColors.error),
+                        ),
                       ),
                     ),
                   );

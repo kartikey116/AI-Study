@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../documents/presentation/providers/documents_provider.dart';
@@ -42,36 +43,59 @@ class _QuizSetupScreenState extends ConsumerState<QuizSetupScreen> {
     }
   }
 
+  Widget _sectionLabel(String number, String text) {
+    return Row(
+      children: [
+        Text(number, style: AppTypography.label.copyWith(color: AppColors.primary)),
+        const SizedBox(width: 8),
+        Text(text.toUpperCase(), style: AppTypography.label.copyWith(color: AppColors.textSecondary)),
+        const SizedBox(width: 8),
+        const Expanded(child: Divider()),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(quizGenerationProvider).isLoading;
     final docsAsync = ref.watch(documentsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.paper,
       appBar: AppBar(
-        title: Text('Generate Quiz', style: AppTypography.heading3),
-        backgroundColor: Colors.transparent,
+        title: Text('New quiz', style: AppTypography.heading3),
+        backgroundColor: AppColors.paper,
         elevation: 0,
         actions: [
           TextButton.icon(
             onPressed: () => context.push('/quizzes'),
             icon: const Icon(Icons.history_rounded, size: 18, color: AppColors.primary),
-            label: const Text('Past Quizzes', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+            label: Text(
+              'Past quizzes',
+              style: AppTypography.bodyMedium.copyWith(color: AppColors.primary, fontWeight: FontWeight.w600),
+            ),
           ),
           const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+        padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Source Material Selection ────────────────────────────────
-            Text('Source Material', style: AppTypography.heading3),
+            Text('Build a practice set', style: AppTypography.heading1.copyWith(fontSize: 28)),
             const SizedBox(height: AppSpacing.xs),
             Text(
-              'Choose whether to quiz from a specific uploaded PDF or general AI knowledge.',
+              'Pick a source, set the difficulty, and get a fresh set of questions.',
+              style: AppTypography.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // ── Source Material Selection ────────────────────────────────
+            _sectionLabel('01', 'Source material'),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Quiz from one of your uploaded PDFs, or from general knowledge on a subject.',
               style: AppTypography.bodySmall.copyWith(color: AppColors.textSecondary),
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -81,26 +105,29 @@ class _QuizSetupScreenState extends ConsumerState<QuizSetupScreen> {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFDDD6FE)),
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    border: Border.all(color: AppColors.line),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String?>(
                       value: _selectedDocumentId,
                       isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+                      dropdownColor: AppColors.surface,
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.ink),
                       items: [
-                        const DropdownMenuItem<String?>(
+                        DropdownMenuItem<String?>(
                           value: null,
                           child: Row(
                             children: [
-                              Icon(Icons.public, size: 18, color: Colors.blue),
-                              SizedBox(width: 10),
+                              const Icon(Icons.public_rounded, size: 18, color: AppColors.info),
+                              const SizedBox(width: 10),
                               Expanded(
-                                child: Text('General Topic (AI Generates from Subject)',
+                                child: Text('General topic (from subject)',
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                    style: AppTypography.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
                               ),
                             ],
                           ),
@@ -114,7 +141,8 @@ class _QuizSetupScreenState extends ConsumerState<QuizSetupScreen> {
                                   Expanded(
                                     child: Text('PDF: ${doc.name} (${doc.pageCount ?? 0}p)',
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                        style: AppTypography.bodyMedium.copyWith(
+                                            fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
                                   ),
                                 ],
                               ),
@@ -140,81 +168,103 @@ class _QuizSetupScreenState extends ConsumerState<QuizSetupScreen> {
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            Text('Quiz Details', style: AppTypography.heading3),
+            _sectionLabel('02', 'Quiz details'),
             const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _titleController,
-              decoration: InputDecoration(
-                labelText: 'Quiz Title',
+              decoration: const InputDecoration(
+                labelText: 'Quiz title',
                 hintText: 'e.g., Cellular Biology Ch. 2',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
             TextField(
               controller: _subjectController,
-              decoration: InputDecoration(
-                labelText: 'Subject / Topic',
+              decoration: const InputDecoration(
+                labelText: 'Subject / topic',
                 hintText: 'e.g., Biology',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: AppSpacing.xl),
-            
-            Text('Difficulty', style: AppTypography.heading3),
-            const SizedBox(height: AppSpacing.sm),
+
+            _sectionLabel('03', 'Difficulty'),
+            const SizedBox(height: AppSpacing.md),
             Row(
               children: [
                 _buildDifficultyCard(
                   value: 'Easy',
                   label: 'Easy',
-                  icon: Icons.sentiment_satisfied_alt_rounded,
+                  icon: Icons.spa_outlined,
                   activeColor: AppColors.success,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 _buildDifficultyCard(
                   value: 'Medium',
                   label: 'Medium',
                   icon: Icons.tune_rounded,
                   activeColor: AppColors.warning,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 _buildDifficultyCard(
                   value: 'Hard',
                   label: 'Hard',
-                  icon: Icons.local_fire_department_rounded,
+                  icon: Icons.local_fire_department_outlined,
                   activeColor: AppColors.error,
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.xl),
 
-            Text('Number of Questions: ${_numQuestions.toInt()}', style: AppTypography.heading3),
-            Slider(
-              value: _numQuestions,
-              min: 5,
-              max: 20,
-              divisions: 3,
-              label: _numQuestions.round().toString(),
-              activeColor: AppColors.primary,
-              onChanged: (double value) {
-                setState(() => _numQuestions = value);
-              },
+            _sectionLabel('04', 'Length'),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('${_numQuestions.toInt()}', style: AppTypography.heading1),
+                const SizedBox(width: 8),
+                Text('questions', style: AppTypography.bodyMedium),
+              ],
             ),
-            
-            const SizedBox(height: 40),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                activeTrackColor: AppColors.ink,
+                inactiveTrackColor: AppColors.surfaceSunken,
+                thumbColor: AppColors.highlighter,
+                overlayColor: AppColors.highlighter.withValues(alpha: 0.2),
+                activeTickMarkColor: AppColors.highlighter,
+                inactiveTickMarkColor: AppColors.lineStrong,
+                valueIndicatorColor: AppColors.ink,
+                valueIndicatorTextStyle: AppTypography.mono.copyWith(color: AppColors.onInk),
+              ),
+              child: Slider(
+                value: _numQuestions,
+                min: 5,
+                max: 20,
+                divisions: 3,
+                label: _numQuestions.round().toString(),
+                onChanged: (double value) {
+                  setState(() => _numQuestions = value);
+                },
+              ),
+            ),
+
+            const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
               height: 56,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
                 onPressed: isLoading ? null : _generate,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text('Generate with AI', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                icon: isLoading
+                    ? const SizedBox.shrink()
+                    : const Icon(Icons.bolt_rounded, color: AppColors.highlighter),
+                label: isLoading
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(color: AppColors.highlighter, strokeWidth: 2.5),
+                      )
+                    : Text('Generate quiz', style: AppTypography.button.copyWith(fontSize: 16)),
               ),
             ),
           ],
@@ -257,51 +307,47 @@ class _QuizSetupScreenState extends ConsumerState<QuizSetupScreen> {
   }) {
     final isSelected = _difficulty == value;
     return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _difficulty = value;
-          });
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected ? activeColor.withValues(alpha: 0.12) : Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isSelected ? activeColor : Colors.grey.shade200,
-              width: isSelected ? 2 : 1,
+      child: Semantics(
+        selected: isSelected,
+        button: true,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _difficulty = value;
+            });
+          },
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              color: isSelected ? AppColors.highlighterSoft : AppColors.surface,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(
+                color: isSelected ? AppColors.ink : AppColors.line,
+                width: isSelected ? 1.5 : 1,
+              ),
+              boxShadow: isSelected ? AppShadows.hardSmall : null,
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: activeColor.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? activeColor : Colors.grey.shade400,
-                size: 24,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  fontSize: 14,
-                  color: isSelected ? activeColor : AppColors.textSecondary,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? activeColor : AppColors.textMuted,
+                  size: 24,
                 ),
-              ),
-            ],
+                const SizedBox(height: 6),
+                Text(
+                  label,
+                  style: AppTypography.bodyMedium.copyWith(
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? AppColors.ink : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

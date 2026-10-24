@@ -8,42 +8,45 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
 
+  /// Featured cards get an ink outline and a hard offset shadow.
+  final bool featured;
+  final Color? color;
+
   const AppCard({
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.onTap,
+    this.featured = false,
+    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
-    final card = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.02),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    final radius = BorderRadius.circular(AppRadius.lg);
+    final decoration = BoxDecoration(
+      color: color ?? AppColors.surface,
+      borderRadius: radius,
+      border: Border.all(
+        color: featured ? AppColors.ink : AppColors.line,
+        width: featured ? 1.5 : 1,
       ),
-      child: child,
+      boxShadow: featured ? AppShadows.hard : AppShadows.card,
     );
 
-    if (onTap != null) {
-      return GestureDetector(
-        onTap: onTap,
-        child: card,
-      );
+    if (onTap == null) {
+      return Container(padding: padding, decoration: decoration, child: child);
     }
-    return card;
+    return DecoratedBox(
+      decoration: decoration,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Padding(padding: padding, child: child),
+        ),
+      ),
+    );
   }
 }

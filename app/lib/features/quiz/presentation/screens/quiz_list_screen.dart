@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../providers/quiz_provider.dart';
@@ -19,24 +20,24 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
   Color _getDifficultyColor(String difficulty) {
     switch (difficulty.toLowerCase()) {
       case 'easy':
-        return const Color(0xFF16A34A);
+        return AppColors.success;
       case 'hard':
-        return const Color(0xFFDC2626);
+        return AppColors.error;
       case 'medium':
       default:
-        return const Color(0xFFD97706);
+        return AppColors.warning;
     }
   }
 
   Color _getDifficultyBg(String difficulty) {
     switch (difficulty.toLowerCase()) {
       case 'easy':
-        return const Color(0xFFDCFCE7);
+        return AppColors.successSoft;
       case 'hard':
-        return const Color(0xFFFEE2E2);
+        return AppColors.errorSoft;
       case 'medium':
       default:
-        return const Color(0xFFFEF3C7);
+        return AppColors.warningSoft;
     }
   }
 
@@ -44,8 +45,7 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Quiz?'),
+        title: const Text('Delete quiz?'),
         content: Text('Are you sure you want to delete "$title"? This action cannot be undone.'),
         actions: [
           TextButton(
@@ -55,9 +55,8 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              foregroundColor: AppColors.onInk,
+              minimumSize: const Size(64, 44),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
             child: const Text('Delete'),
@@ -98,13 +97,14 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
     final activeQuizIds = activeIdsAsync.asData?.value ?? <String>{};
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.paper,
       appBar: AppBar(
-        title: Text('My Quizzes', style: AppTypography.heading2.copyWith(fontSize: 20)),
-        backgroundColor: Colors.white,
+        title: Text('My quizzes', style: AppTypography.heading2.copyWith(fontSize: 22)),
+        backgroundColor: AppColors.paper,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.ink),
+          tooltip: 'Back',
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -115,7 +115,7 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.ink),
             tooltip: 'Refresh',
             onPressed: () {
               ref.invalidate(quizzesProvider);
@@ -125,36 +125,42 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        elevation: 3,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text(
-          'New Quiz',
-          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white),
-        ),
+        icon: const Icon(Icons.add_rounded, color: AppColors.highlighter),
+        label: Text('New quiz', style: AppTypography.button),
         onPressed: () => context.push('/quiz-setup'),
       ),
       body: SafeArea(
         child: quizzesAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
-                const SizedBox(height: 12),
-                Text('Failed to load quizzes', style: AppTypography.heading3),
-                const SizedBox(height: 8),
-                Text('$e', style: AppTypography.bodySmall, textAlign: TextAlign.center),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    ref.invalidate(quizzesProvider);
-                    ref.invalidate(activeQuizIdsProvider);
-                  },
-                  child: const Text('Try Again'),
-                ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.errorSoft,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                    child: const Icon(Icons.error_outline_rounded, size: 32, color: AppColors.error),
+                  ),
+                  const SizedBox(height: 12),
+                  Text("Quizzes didn't load", style: AppTypography.heading3),
+                  const SizedBox(height: 8),
+                  Text('$e', style: AppTypography.bodySmall, textAlign: TextAlign.center),
+                  const SizedBox(height: 16),
+                  OutlinedButton(
+                    onPressed: () {
+                      ref.invalidate(quizzesProvider);
+                      ref.invalidate(activeQuizIdsProvider);
+                    },
+                    child: const Text('Try again'),
+                  ),
+                ],
+              ),
             ),
           ),
           data: (quizzes) {
@@ -195,81 +201,78 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
             }).toList();
 
             return RefreshIndicator(
+              color: AppColors.ink,
               onRefresh: () async {
                 ref.invalidate(quizzesProvider);
                 ref.invalidate(activeQuizIdsProvider);
               },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.md, AppSpacing.lg, 88),
+                padding: const EdgeInsets.fromLTRB(AppSpacing.lg, AppSpacing.sm, AppSpacing.lg, 96),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // ── 1. Statistics Bar ─────────────────────────────────────
+                    // ── 1. Statistics Bar (featured ink block) ───────────────
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
+                        color: AppColors.ink,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _StatItem(
-                            label: 'Total',
-                            value: '$totalCount',
-                            icon: Icons.quiz_outlined,
-                            iconColor: AppColors.primary,
-                          ),
-                          Container(width: 1, height: 36, color: const Color(0xFFE2E8F0)),
-                          _StatItem(
-                            label: 'Completed',
-                            value: '${completedList.length}',
-                            icon: Icons.check_circle_outline_rounded,
-                            iconColor: const Color(0xFF16A34A),
-                          ),
-                          Container(width: 1, height: 36, color: const Color(0xFFE2E8F0)),
-                          _StatItem(
-                            label: 'Avg Score',
-                            value: completedList.isEmpty ? '—' : '${avgScore.round()}%',
-                            icon: Icons.insights_rounded,
-                            iconColor: const Color(0xFF8B5CF6),
-                          ),
-                        ],
+                      child: IntrinsicHeight(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _StatItem(
+                                label: 'Total',
+                                value: '$totalCount',
+                              ),
+                            ),
+                            const VerticalDivider(color: AppColors.inkSoft, width: 1, thickness: 1),
+                            Expanded(
+                              child: _StatItem(
+                                label: 'Completed',
+                                value: '${completedList.length}',
+                              ),
+                            ),
+                            const VerticalDivider(color: AppColors.inkSoft, width: 1, thickness: 1),
+                            Expanded(
+                              child: _StatItem(
+                                label: 'Avg score',
+                                value: completedList.isEmpty ? '—' : '${avgScore.round()}%',
+                                highlight: true,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 
                     const SizedBox(height: AppSpacing.lg),
 
-                    // ── 2. Filter Pills ───────────────────────────────────────
+                    // ── 2. Filter Tabs ───────────────────────────────────────
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
                           _FilterChip(
-                            label: 'All ($totalCount)',
+                            label: 'All',
+                            count: totalCount,
                             isSelected: _selectedFilter == 'All',
                             onTap: () => setState(() => _selectedFilter = 'All'),
                           ),
                           const SizedBox(width: 8),
                           _FilterChip(
-                            label: 'In Progress (${inProgressList.length})',
+                            label: 'In progress',
+                            count: inProgressList.length,
                             isSelected: _selectedFilter == 'In Progress',
-                            highlightColor: const Color(0xFF2563EB),
                             onTap: () => setState(() => _selectedFilter = 'In Progress'),
                           ),
                           const SizedBox(width: 8),
                           _FilterChip(
-                            label: 'Completed (${completedList.length})',
+                            label: 'Completed',
+                            count: completedList.length,
                             isSelected: _selectedFilter == 'Completed',
-                            highlightColor: const Color(0xFF16A34A),
                             onTap: () => setState(() => _selectedFilter = 'Completed'),
                           ),
                         ],
@@ -297,203 +300,151 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
 
                         final latestAttempt = hasAttempt ? attempts.first : null;
                         final score = (latestAttempt?['score'] as num?)?.round();
+                        final passed = (score ?? 0) >= 70;
 
                         return Container(
                           margin: const EdgeInsets.only(bottom: AppSpacing.md),
                           decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(18),
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
                             border: Border.all(
-                              color: isInProgress
-                                  ? AppColors.primary.withOpacity(0.5)
-                                  : const Color(0xFFE2E8F0),
-                              width: isInProgress ? 1.8 : 1,
+                              color: isInProgress ? AppColors.ink : AppColors.line,
+                              width: isInProgress ? 1.5 : 1,
                             ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(AppSpacing.md),
+                            padding: const EdgeInsets.fromLTRB(AppSpacing.md, AppSpacing.sm, AppSpacing.xs, AppSpacing.md),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 // Badges row & delete icon
                                 Row(
                                   children: [
-                                    // Subject pill
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
+                                    Flexible(
                                       child: Text(
-                                        subject,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppColors.textSecondary,
-                                        ),
+                                        subject.toUpperCase(),
+                                        style: AppTypography.label.copyWith(color: AppColors.textSecondary),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
-                                    const SizedBox(width: 6),
-                                    // Difficulty pill
+                                    const SizedBox(width: 8),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
                                         color: _getDifficultyBg(difficulty),
-                                        borderRadius: BorderRadius.circular(8),
+                                        borderRadius: BorderRadius.circular(AppRadius.sm),
                                       ),
                                       child: Text(
-                                        difficulty,
-                                        style: TextStyle(
-                                          fontSize: 11,
+                                        difficulty.toUpperCase(),
+                                        style: AppTypography.label.copyWith(
+                                          fontSize: 10,
                                           fontWeight: FontWeight.w700,
                                           color: _getDifficultyColor(difficulty),
                                         ),
                                       ),
                                     ),
                                     const Spacer(),
-                                    // Delete menu button
                                     IconButton(
                                       icon: const Icon(Icons.delete_outline_rounded,
-                                          size: 20, color: Color(0xFF94A3B8)),
-                                      tooltip: 'Delete Quiz',
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
+                                          size: 20, color: AppColors.textMuted),
+                                      tooltip: 'Delete quiz',
                                       onPressed: () => _deleteQuiz(id, title),
                                     ),
                                   ],
                                 ),
 
-                                const SizedBox(height: 10),
-
-                                // Title
-                                Text(
-                                  title,
-                                  style: AppTypography.heading3.copyWith(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-
-                                const SizedBox(height: 6),
-
-                                // Metadata row (Questions + Attempt Score / Status)
-                                Row(
-                                  children: [
-                                    const Icon(Icons.format_list_bulleted_rounded,
-                                        size: 15, color: AppColors.textMuted),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '$questionCount questions',
-                                      style: AppTypography.bodySmall.copyWith(
-                                        color: AppColors.textMuted,
+                                Padding(
+                                  padding: const EdgeInsets.only(right: AppSpacing.sm),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Title
+                                      Text(
+                                        title,
+                                        style: AppTypography.heading3.copyWith(fontSize: 19),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    if (isInProgress) ...[
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFEFF6FF),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(color: const Color(0xFF93C5FD)),
-                                        ),
-                                        child: const Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.play_circle_outline_rounded,
-                                                size: 13, color: Color(0xFF2563EB)),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              'In Progress',
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.w700,
-                                                color: Color(0xFF2563EB),
-                                              ),
+
+                                      const SizedBox(height: 8),
+
+                                      // Metadata row (Questions + Attempt Score / Status)
+                                      Row(
+                                        children: [
+                                          Text(
+                                            '$questionCount Q',
+                                            style: AppTypography.mono.copyWith(
+                                              fontSize: 12,
+                                              color: AppColors.textMuted,
                                             ),
-                                          ],
-                                        ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          if (isInProgress)
+                                            const _StatusTag(
+                                              icon: Icons.bookmark_rounded,
+                                              text: 'In progress',
+                                              fg: AppColors.ink,
+                                              bg: AppColors.highlighter,
+                                            )
+                                          else if (hasAttempt)
+                                            _StatusTag(
+                                              text: 'Score $score%',
+                                              fg: passed ? AppColors.success : AppColors.warning,
+                                              bg: passed ? AppColors.successSoft : AppColors.warningSoft,
+                                            ),
+                                        ],
                                       ),
-                                    ] else if (hasAttempt) ...[
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: (score ?? 0) >= 70
-                                              ? const Color(0xFFDCFCE7)
-                                              : const Color(0xFFFEF3C7),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          'Score: $score%',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: (score ?? 0) >= 70
-                                                ? const Color(0xFF16A34A)
-                                                : const Color(0xFFD97706),
+
+                                      const SizedBox(height: 14),
+
+                                      // Action Button
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 48,
+                                        child: ElevatedButton.icon(
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: hasAttempt && !isInProgress
+                                                ? AppColors.surface
+                                                : AppColors.ink,
+                                            foregroundColor: hasAttempt && !isInProgress
+                                                ? AppColors.ink
+                                                : AppColors.onInk,
+                                            minimumSize: const Size(64, 48),
+                                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                                            side: hasAttempt && !isInProgress
+                                                ? const BorderSide(color: AppColors.ink, width: 1.5)
+                                                : BorderSide.none,
+                                          ),
+                                          onPressed: () {
+                                            context.push('/quiz/$id');
+                                          },
+                                          icon: Icon(
+                                            isInProgress
+                                                ? Icons.play_arrow_rounded
+                                                : (hasAttempt ? Icons.replay_rounded : Icons.play_arrow_rounded),
+                                            size: 20,
+                                            color: hasAttempt && !isInProgress
+                                                ? AppColors.ink
+                                                : AppColors.highlighter,
+                                          ),
+                                          label: Text(
+                                            isInProgress
+                                                ? 'Resume quiz'
+                                                : (hasAttempt ? 'Retake quiz' : 'Start quiz'),
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTypography.button.copyWith(
+                                              fontSize: 14,
+                                              color: hasAttempt && !isInProgress
+                                                  ? AppColors.ink
+                                                  : AppColors.onInk,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ],
-                                  ],
-                                ),
-
-                                const SizedBox(height: 14),
-
-                                // Action Button
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 48,
-                                  child: ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: isInProgress
-                                          ? const Color(0xFF2563EB)
-                                          : (hasAttempt
-                                              ? Colors.white
-                                              : AppColors.primary),
-                                      foregroundColor: hasAttempt && !isInProgress
-                                          ? AppColors.primary
-                                          : Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                                      side: hasAttempt && !isInProgress
-                                          ? const BorderSide(color: AppColors.primary, width: 1.5)
-                                          : BorderSide.none,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                    ),
-                                    onPressed: () {
-                                      context.push('/quiz/$id');
-                                    },
-                                    icon: Icon(
-                                      isInProgress
-                                          ? Icons.play_arrow_rounded
-                                          : (hasAttempt ? Icons.replay_rounded : Icons.play_arrow_rounded),
-                                      size: 20,
-                                    ),
-                                    label: Text(
-                                      isInProgress
-                                          ? 'Resume Quiz'
-                                          : (hasAttempt ? 'Retake Quiz' : 'Start Quiz'),
-                                      maxLines: 1,
-                                      softWrap: false,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 14,
-                                      ),
-                                    ),
                                   ),
                                 ),
                               ],
@@ -519,40 +470,31 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
 class _StatItem extends StatelessWidget {
   final String label;
   final String value;
-  final IconData icon;
-  final Color iconColor;
+  final bool highlight;
 
   const _StatItem({
     required this.label,
     required this.value,
-    required this.icon,
-    required this.iconColor,
+    this.highlight = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: iconColor),
-            const SizedBox(width: 4),
-            Text(
-              value,
-              style: AppTypography.heading2.copyWith(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
+        Text(
+          value,
+          style: AppTypography.heading2.copyWith(
+            fontSize: 24,
+            color: highlight ? AppColors.highlighter : AppColors.onInk,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
-          label,
-          style: AppTypography.bodySmall.copyWith(
-            fontSize: 12,
-            color: AppColors.textMuted,
+          label.toUpperCase(),
+          style: AppTypography.label.copyWith(
+            fontSize: 10,
+            color: AppColors.onInk.withValues(alpha: 0.65),
           ),
         ),
       ],
@@ -560,49 +502,102 @@ class _StatItem extends StatelessWidget {
   }
 }
 
+class _StatusTag extends StatelessWidget {
+  final IconData? icon;
+  final String text;
+  final Color fg;
+  final Color bg;
+
+  const _StatusTag({
+    this.icon,
+    required this.text,
+    required this.fg,
+    required this.bg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, size: 12, color: fg),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            style: AppTypography.bodySmall.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _FilterChip extends StatelessWidget {
   final String label;
+  final int count;
   final bool isSelected;
-  final Color highlightColor;
   final VoidCallback onTap;
 
   const _FilterChip({
     required this.label,
+    required this.count,
     required this.isSelected,
-    this.highlightColor = AppColors.primary,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? highlightColor : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? highlightColor : const Color(0xFFE2E8F0),
-            width: 1.2,
+    return Semantics(
+      selected: isSelected,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.ink : AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(
+              color: isSelected ? AppColors.ink : AppColors.line,
+              width: 1.5,
+            ),
           ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: highlightColor.withOpacity(0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            color: isSelected ? Colors.white : AppColors.textSecondary,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: AppTypography.bodyMedium.copyWith(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.onInk : AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '$count',
+                style: AppTypography.mono.copyWith(
+                  fontSize: 12,
+                  color: isSelected ? AppColors.highlighter : AppColors.textMuted,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -621,60 +616,55 @@ class _EmptyQuizzesView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String title = 'No Quizzes Yet';
+    String title = 'No quizzes yet';
     String description =
         'Generate personalized quizzes from your documents or explore any subject of your choice.';
 
     if (filter == 'In Progress') {
-      title = 'No In-Progress Quizzes';
-      description = 'You don\'t have any unfinished quizzes. Start or resume one anytime!';
+      title = 'Nothing in progress';
+      description = 'You don\'t have any unfinished quizzes. Start or resume one anytime.';
     } else if (filter == 'Completed') {
-      title = 'No Completed Quizzes';
+      title = 'No completed quizzes';
       description = 'Take a quiz to see your scores and mastery here.';
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xxl),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.line),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(18),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF0EEFF),
-              shape: BoxShape.circle,
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.highlighterSoft,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.ink, width: 1.5),
+              boxShadow: AppShadows.hard,
             ),
             child: const Icon(
               Icons.quiz_outlined,
-              size: 40,
-              color: AppColors.primary,
+              size: 34,
+              color: AppColors.ink,
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(title, style: AppTypography.heading3.copyWith(fontSize: 18)),
+          const SizedBox(height: AppSpacing.lg),
+          Text(title, style: AppTypography.heading3, textAlign: TextAlign.center),
           const SizedBox(height: 6),
           Text(
             description,
             textAlign: TextAlign.center,
-            style: AppTypography.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.4,
-            ),
+            style: AppTypography.bodyMedium,
           ),
           const SizedBox(height: AppSpacing.lg),
           ElevatedButton.icon(
             onPressed: onGenerateTap,
-            icon: const Icon(Icons.add_rounded, size: 20, color: Colors.white),
-            label: const Text('Generate New Quiz', style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
+            icon: const Icon(Icons.add_rounded, size: 20, color: AppColors.highlighter),
+            label: const Text('Generate new quiz'),
           ),
         ],
       ),

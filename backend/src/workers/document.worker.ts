@@ -13,6 +13,9 @@ export interface ProcessDocumentJob {
   userId: string;
 }
 
+export const MAX_PDF_BYTES = 25 * 1024 * 1024; // 25 MB
+export const MAX_PDF_PAGES = 300;
+
 const CHUNK_SIZE = 400;    // target tokens per chunk (~1600 chars)
 const CHUNK_OVERLAP = 50;  // overlap in tokens (~200 chars)
 const CHARS_PER_TOKEN = 4;
@@ -60,6 +63,15 @@ function chunkText(pages: { text: string; pageNumber: number }[]): TextChunk[] {
 
 // ─── Main Worker Function ──────────────────────────────────────────────────
 
+/** Permanent failure (retrying won't help): mark FAILED with a message the student can act on. */
+async function failDocument(documentId: string, errorMessage: string) {
+  console.warn(`[Worker] Document ${documentId} rejected: ${errorMessage}`);
+  await prisma.document.update({
+    where: { id: documentId },
+    data: { status: DocumentStatus.FAILED, errorMessage },
+  });
+}
+
 export async function processDocument(job: ProcessDocumentJob): Promise<void> {
   const { documentId, storagePath, userId } = job;
 
@@ -77,10 +89,17 @@ export async function processDocument(job: ProcessDocumentJob): Promise<void> {
   const buffer = Buffer.from(arrayBuffer);
   console.log(`[Worker] PDF downloaded, size: ${buffer.length}`);
 
-  // 3. Extract text per page
+  if (buffer.length > MAX_PDF_BYTES) {
+    return failDocument(documentId, `PDF is too large (max ${MAX_PDF_BYTES / 1024 / 1024} MB).`);
+  }
+  if (buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+    return failDocument(documentId, 'This file is not a valid PDF.');
+  }
+
+  // 3. Extract text per page (bounded: never parse more than MAX_PDF_PAGES pages)
   console.log(`[Worker] Starting pdfParse...`);
   const parsed = await pdfParse(buffer, {
-    max: 0,
+    max: MAX_PDF_PAGES,
     // Extract page-by-page
     pagerender: async (pageData: any) => {
       const textContent = await pageData.getTextContent();
@@ -90,6 +109,9 @@ export async function processDocument(job: ProcessDocumentJob): Promise<void> {
   console.log(`[Worker] pdfParse complete, extracted ${parsed.text.length} chars`);
 
   const pageCount = parsed.numpages;
+  if (pageCount > MAX_PDF_PAGES) {
+    return failDocument(documentId, `PDF has too many pages (max ${MAX_PDF_PAGES}).`);
+  }
 
   // Build per-page text array  
   const fullText = parsed.text;
@@ -109,6 +131,12 @@ export async function processDocument(job: ProcessDocumentJob): Promise<void> {
   // 4. Chunk
   const chunks = chunkText(pages);
   console.log(`[Worker] Document ${documentId}: ${pageCount} pages, ${chunks.length} chunks`);
+
+  // Scanned / image-only PDFs have no text layer. Don't report READY when nothing is searchable.
+  if (chunks.length === 0) {
+    return failDocument(documentId,
+      'No readable text found. Scanned or image-only PDFs are not supported yet.');
+  }
 
   // 5. Deduplicate by content hash
   const existingHashes = await prisma.documentChunk.findMany({
