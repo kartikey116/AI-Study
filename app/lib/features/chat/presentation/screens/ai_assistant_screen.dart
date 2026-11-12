@@ -427,7 +427,12 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Study Assistant', style: AppTypography.heading3.copyWith(fontSize: 19)),
+                        Text(
+                          'Study Assistant',
+                          style: AppTypography.heading3.copyWith(fontSize: 18),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         const SizedBox(height: 3),
                         Row(
                           children: [
@@ -614,7 +619,7 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                       children: [
                         AiMessageBubble(
                           text: "Hi $firstName.\nI'm your study assistant. I can explain concepts, summarise your notes, write practice questions and more. What are you working on today?",
-                          timestamp: TimeOfDay.now().format(context),
+                          timestamp: formatMessageTime(context, DateTime.now()),
                         ),
                         if (chatState.isLoading && (chatState.streamingText?.isEmpty ?? true))
                           const AiTypingIndicator()
@@ -652,10 +657,12 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
                           return AiMessageBubble(
                             text: msg.content,
                             isStreaming: false,
+                            timestamp: formatMessageTime(context, msg.sentAt),
                           );
                         } else {
                           return UserMessageBubble(
                             text: msg.content,
+                            timestamp: formatMessageTime(context, msg.sentAt),
                           );
                         }
                       },

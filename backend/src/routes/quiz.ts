@@ -5,7 +5,9 @@ import { generationLimiter } from '../middleware/rate-limit.middleware';
 import { prisma } from '../utils/db.util';
 import { uuid, promptLabel, validateBody } from '../utils/validation.util';
 import { QuizAgent } from '../ai/agents/quiz.agent';
+import { checkStudyTopic } from '../ai/guards/topic-guard';
 import { DocumentStatus } from '@prisma/client';
+import { logger } from '../utils/logger';
 
 const router = Router();
 const quizAgent = new QuizAgent();
@@ -41,6 +43,10 @@ router.post('/generate', generationLimiter, validateBody(generateQuizSchema), as
         select: { id: true },
       });
       if (!owned) return res.status(404).json({ error: 'Document not found' });
+    } else {
+      // Topic-only quizzes must be academic (document quizzes use the student's own material)
+      const rejection = await checkStudyTopic(req.userId!, `${title} (${subject})`);
+      if (rejection) return res.status(400).json({ error: rejection });
     }
 
     const result = await quizAgent.generateQuiz(
@@ -53,7 +59,7 @@ router.post('/generate', generationLimiter, validateBody(generateQuizSchema), as
     );
     res.json(result);
   } catch (error: any) {
-    console.error('Quiz generation error:', error);
+    logger.error({ err: error }, 'Quiz generation error');
     res.status(500).json({ error: error.message || 'Internal server error' });
   }
 });
@@ -106,6 +112,30 @@ router.get('/:id', async (req: Request, res: Response): Promise<any> => {
     });
     if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
     res.json(quiz);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Review a quiz: questions plus the user's latest attempt with per-question answers
+router.get('/:id/review', async (req: Request, res: Response): Promise<any> => {
+  try {
+    const quiz = await prisma.quiz.findFirst({
+      where: { id: req.params.id, userId: req.userId! },
+      include: { questions: true },
+    });
+    if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+
+    const attempt = await prisma.quizAttempt.findFirst({
+      where: { quizId: quiz.id, userId: req.userId! },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        answers: { select: { questionId: true, userResponse: true, isCorrect: true } },
+      },
+    });
+    if (!attempt) return res.status(404).json({ error: 'No attempt found for this quiz' });
+
+    res.json({ quiz, attempt });
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }

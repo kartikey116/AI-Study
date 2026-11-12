@@ -1,10 +1,11 @@
-import * as crypto from 'crypto';
-import fs from 'fs';
-import pdfParse = require('pdf-parse');
 import { prisma } from '../utils/db.util';
+import { chunkPages } from '../ai/services/chunking.service';
 import { createSignedDownloadUrl } from '../utils/supabase.util';
 import { embedBatch } from '../ai/services/embedding.service';
-import { InProcessQueue } from '../queues/in-process.queue';
+import { extractPages, enrichPagesWithVision } from '../ai/services/pdf-extraction.service';
+import { MODELS } from '../ai/providers/models';
+import { logger } from '../utils/logger';
+import { costUsd } from '../ai/pricing';
 import { DocumentStatus } from '@prisma/client';
 
 export interface ProcessDocumentJob {
@@ -16,56 +17,11 @@ export interface ProcessDocumentJob {
 export const MAX_PDF_BYTES = 25 * 1024 * 1024; // 25 MB
 export const MAX_PDF_PAGES = 300;
 
-const CHUNK_SIZE = 400;    // target tokens per chunk (~1600 chars)
-const CHUNK_OVERLAP = 50;  // overlap in tokens (~200 chars)
-const CHARS_PER_TOKEN = 4;
-
-// ─── Chunking ──────────────────────────────────────────────────────────────
-
-interface TextChunk {
-  text: string;
-  pageNumber: number;
-  chunkIndex: number;
-  contentHash: string;
-}
-
-function chunkText(pages: { text: string; pageNumber: number }[]): TextChunk[] {
-  const chunks: TextChunk[] = [];
-  let chunkIndex = 0;
-
-  for (const page of pages) {
-    const words = page.text.split(/\s+/).filter(Boolean);
-    const chunkWords = CHUNK_SIZE * CHARS_PER_TOKEN / 5; // approx words per chunk
-    const overlapWords = CHUNK_OVERLAP * CHARS_PER_TOKEN / 5;
-
-    let start = 0;
-    while (start < words.length) {
-      const end = Math.min(start + chunkWords, words.length);
-      const text = words.slice(start, end).join(' ').trim();
-
-      if (text.length > 50) { // skip tiny chunks
-        const contentHash = crypto.createHash('sha256').update(text).digest('hex');
-        chunks.push({
-          text,
-          pageNumber: page.pageNumber,
-          chunkIndex: chunkIndex++,
-          contentHash,
-        });
-      }
-
-      if (end >= words.length) break;
-      start = Math.max(start + 1, end - overlapWords);
-    }
-  }
-
-  return chunks;
-}
-
 // ─── Main Worker Function ──────────────────────────────────────────────────
 
 /** Permanent failure (retrying won't help): mark FAILED with a message the student can act on. */
 async function failDocument(documentId: string, errorMessage: string) {
-  console.warn(`[Worker] Document ${documentId} rejected: ${errorMessage}`);
+  logger.warn({ documentId, errorMessage }, 'Document rejected');
   await prisma.document.update({
     where: { id: documentId },
     data: { status: DocumentStatus.FAILED, errorMessage },
@@ -87,7 +43,7 @@ export async function processDocument(job: ProcessDocumentJob): Promise<void> {
   if (!response.ok) throw new Error(`Failed to download PDF: ${response.statusText}`);
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  console.log(`[Worker] PDF downloaded, size: ${buffer.length}`);
+  logger.info({ documentId, bytes: buffer.length }, 'PDF downloaded');
 
   if (buffer.length > MAX_PDF_BYTES) {
     return failDocument(documentId, `PDF is too large (max ${MAX_PDF_BYTES / 1024 / 1024} MB).`);
@@ -96,116 +52,98 @@ export async function processDocument(job: ProcessDocumentJob): Promise<void> {
     return failDocument(documentId, 'This file is not a valid PDF.');
   }
 
-  // 3. Extract text per page (bounded: never parse more than MAX_PDF_PAGES pages)
-  console.log(`[Worker] Starting pdfParse...`);
-  const parsed = await pdfParse(buffer, {
-    max: MAX_PDF_PAGES,
-    // Extract page-by-page
-    pagerender: async (pageData: any) => {
-      const textContent = await pageData.getTextContent();
-      return textContent.items.map((item: any) => item.str).join(' ');
+  // 3. Extract the text layer page by page (bounded: never parse more than MAX_PDF_PAGES pages)
+  let extracted;
+  try {
+    extracted = await extractPages(buffer, MAX_PDF_PAGES);
+  } catch (err: any) {
+    if (err?.name === 'PasswordException') {
+      return failDocument(documentId, 'This PDF is password-protected. Please upload an unlocked copy.');
     }
-  });
-  console.log(`[Worker] pdfParse complete, extracted ${parsed.text.length} chars`);
+    throw err;
+  }
 
-  const pageCount = parsed.numpages;
+  const { pageCount } = extracted;
   if (pageCount > MAX_PDF_PAGES) {
     return failDocument(documentId, `PDF has too many pages (max ${MAX_PDF_PAGES}).`);
   }
 
-  // Build per-page text array  
-  const fullText = parsed.text;
-  const estimatedCharsPerPage = Math.ceil(fullText.length / Math.max(pageCount, 1));
-  
-  const pages = Array.from({ length: pageCount }, (_, i) => ({
-    pageNumber: i + 1,
-    text: fullText.slice(i * estimatedCharsPerPage, (i + 1) * estimatedCharsPerPage),
-  }));
-
-  // Update page count
   await prisma.document.update({
     where: { id: documentId },
     data: { pageCount },
   });
 
-  // 4. Chunk
-  const chunks = chunkText(pages);
-  console.log(`[Worker] Document ${documentId}: ${pageCount} pages, ${chunks.length} chunks`);
-
-  // Scanned / image-only PDFs have no text layer. Don't report READY when nothing is searchable.
-  if (chunks.length === 0) {
-    return failDocument(documentId,
-      'No readable text found. Scanned or image-only PDFs are not supported yet.');
+  // 4. Vision: transcribe scanned pages, describe diagrams/charts on text pages
+  const { pages, usage, scanned, withFigures } = await enrichPagesWithVision(buffer, extracted.pages);
+  logger.info({ documentId, pageCount, transcribed: scanned.length, figurePages: withFigures.length, visionRequests: usage.requests }, 'Pages extracted');
+  if (usage.requests > 0) {
+    await prisma.aiRequestLog.create({
+      data: {
+        userId,
+        modelName: MODELS.main,
+        promptTokens: usage.promptTokens,
+        completionTokens: usage.completionTokens,
+        totalTokens: usage.promptTokens + usage.completionTokens,
+        cost: costUsd(MODELS.main, usage.promptTokens, usage.completionTokens),
+        requestType: 'DOCUMENT_VISION',
+      },
+    }).catch(err => logger.warn({ err: err.message }, 'Failed to log vision usage'));
   }
 
-  // 5. Deduplicate by content hash
+  // 5. Chunk (structure-aware: paragraphs, headings, sentence boundaries)
+  const chunks = chunkPages(pages);
+
+  // Don't report READY when nothing is searchable (blank or unreadable PDF)
+  if (chunks.length === 0) {
+    return failDocument(documentId, 'No readable content found in this PDF. It may be blank or unreadable.');
+  }
+
+  // 6. Deduplicate within this document only. Re-runs (retries, reprocessing) skip chunks
+  //    already stored; other documents never affect this one.
   const existingHashes = await prisma.documentChunk.findMany({
     where: {
       userId,
+      documentId,
       contentHash: { in: chunks.map(c => c.contentHash) },
     },
     select: { contentHash: true },
   });
-  const existingHashSet = new Set(existingHashes.map(r => r.contentHash));
-  const newChunks = chunks.filter(c => !existingHashSet.has(c.contentHash));
+  const seen = new Set(existingHashes.map(r => r.contentHash));
+  const newChunks = chunks.filter(c => {
+    if (seen.has(c.contentHash)) return false;
+    seen.add(c.contentHash); // also drops repeated text inside this document (headers, footers)
+    return true;
+  });
 
-  console.log(`[Worker] New chunks to embed: ${newChunks.length} (${existingHashSet.size} deduped)`);
+  logger.info({ documentId, chunks: chunks.length, toEmbed: newChunks.length }, 'Chunks ready to embed');
 
-  // 6. Batch embed new chunks
+  // 7. Batch embed new chunks
   const embeddings = await embedBatch(newChunks.map(c => c.text));
 
-  // 7. Insert chunks into DB (prisma for metadata, raw SQL for vector column)
-  for (let i = 0; i < newChunks.length; i++) {
-    const chunk = newChunks[i];
-    const embedding = embeddings[i];
-
-    // Insert chunk record first
-    const created = await prisma.documentChunk.create({
-      data: {
-        documentId,
-        userId,
-        pageNumber: chunk.pageNumber,
-        chunkIndex: chunk.chunkIndex,
-        text: chunk.text,
-        contentHash: chunk.contentHash,
-      },
-    });
-
-    // Update embedding via raw SQL (pgvector)
-    const vectorStr = `[${embedding.join(',')}]`;
+  // 8. Insert chunks in batches: one statement per 100 chunks, vectors included
+  //    (ids generated in SQL; previously 2 round-trips per chunk)
+  const INSERT_BATCH = 100;
+  for (let i = 0; i < newChunks.length; i += INSERT_BATCH) {
+    const batch = newChunks.slice(i, i + INSERT_BATCH);
     await prisma.$executeRawUnsafe(
-      `UPDATE "DocumentChunk" SET embedding = $1::vector WHERE id = $2`,
-      vectorStr,
-      created.id
+      `INSERT INTO "DocumentChunk" (id, "documentId", "userId", "pageNumber", "chunkIndex", text, "contentHash", embedding, "createdAt", "updatedAt")
+       SELECT gen_random_uuid()::text, $1, $2, u.page, u.idx, u.body, u.hash, u.vec::vector, now(), now()
+       FROM unnest($3::int[], $4::int[], $5::text[], $6::text[], $7::text[]) AS u(page, idx, body, hash, vec)`,
+      documentId,
+      userId,
+      batch.map(c => c.pageNumber),
+      batch.map(c => c.chunkIndex),
+      batch.map(c => c.text),
+      batch.map(c => c.contentHash),
+      batch.map((_, j) => `[${embeddings[i + j].join(',')}]`),
     );
   }
 
-  // 8. Mark READY
+  // 9. Mark READY
   await prisma.document.update({
     where: { id: documentId },
     data: { status: DocumentStatus.READY },
   });
 
-  console.log(`[Worker] Document ${documentId} is READY`);
+  logger.info({ documentId, chunks: newChunks.length }, 'Document READY');
 }
-
-// ─── Export the Queue Singleton ────────────────────────────────────────────
-
-export const documentQueue = new InProcessQueue<ProcessDocumentJob>(
-  async (job) => {
-    try {
-      await processDocument(job);
-    } catch (err: any) {
-      console.error(`[Worker] Processing failed for ${job.documentId}:`, err);
-      await prisma.document.update({
-        where: { id: job.documentId },
-        data: {
-          status: DocumentStatus.FAILED,
-          errorMessage: err.message ?? 'Unknown error',
-        },
-      }).catch(() => {}); // don't throw if DB also fails
-      throw err; // re-throw so the queue can retry
-    }
-  },
-  { concurrency: 2, maxRetries: 3 }
-);

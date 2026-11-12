@@ -398,51 +398,33 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
 
                                       const SizedBox(height: 14),
 
-                                      // Action Button
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 48,
-                                        child: ElevatedButton.icon(
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: hasAttempt && !isInProgress
-                                                ? AppColors.surface
-                                                : AppColors.ink,
-                                            foregroundColor: hasAttempt && !isInProgress
-                                                ? AppColors.ink
-                                                : AppColors.onInk,
-                                            minimumSize: const Size(64, 48),
-                                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                                            side: hasAttempt && !isInProgress
-                                                ? const BorderSide(color: AppColors.ink, width: 1.5)
-                                                : BorderSide.none,
-                                          ),
-                                          onPressed: () {
-                                            context.push('/quiz/$id');
-                                          },
-                                          icon: Icon(
-                                            isInProgress
-                                                ? Icons.play_arrow_rounded
-                                                : (hasAttempt ? Icons.replay_rounded : Icons.play_arrow_rounded),
-                                            size: 20,
-                                            color: hasAttempt && !isInProgress
-                                                ? AppColors.ink
-                                                : AppColors.highlighter,
-                                          ),
-                                          label: Text(
-                                            isInProgress
-                                                ? 'Resume quiz'
-                                                : (hasAttempt ? 'Retake quiz' : 'Start quiz'),
-                                            maxLines: 1,
-                                            softWrap: false,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: AppTypography.button.copyWith(
-                                              fontSize: 14,
-                                              color: hasAttempt && !isInProgress
-                                                  ? AppColors.ink
-                                                  : AppColors.onInk,
+                                      // Actions: review the last attempt and/or take the quiz
+                                      Row(
+                                        children: [
+                                          if (hasAttempt) ...[
+                                            Expanded(
+                                              child: _CardButton(
+                                                label: 'Review answers',
+                                                icon: Icons.fact_check_outlined,
+                                                filled: true,
+                                                onPressed: () => context.push('/quiz/$id/review'),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                          ],
+                                          Expanded(
+                                            child: _CardButton(
+                                              label: isInProgress
+                                                  ? 'Resume'
+                                                  : (hasAttempt ? 'Retake' : 'Start quiz'),
+                                              icon: hasAttempt && !isInProgress
+                                                  ? Icons.replay_rounded
+                                                  : Icons.play_arrow_rounded,
+                                              filled: !hasAttempt,
+                                              onPressed: () => context.push('/quiz/$id'),
                                             ),
                                           ),
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -466,6 +448,46 @@ class _QuizListScreenState extends ConsumerState<QuizListScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Subcomponents
 // ─────────────────────────────────────────────────────────────────────────────
+
+class _CardButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool filled;
+  final VoidCallback onPressed;
+
+  const _CardButton({
+    required this.label,
+    required this.icon,
+    required this.filled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = filled ? AppColors.onInk : AppColors.ink;
+    return SizedBox(
+      height: 48,
+      child: ElevatedButton.icon(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: filled ? AppColors.ink : AppColors.surface,
+          foregroundColor: fg,
+          minimumSize: const Size(64, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          side: filled ? BorderSide.none : const BorderSide(color: AppColors.ink, width: 1.5),
+        ),
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18, color: filled ? AppColors.highlighter : AppColors.ink),
+        label: Text(
+          label,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.button.copyWith(fontSize: 14, color: fg),
+        ),
+      ),
+    );
+  }
+}
 
 class _StatItem extends StatelessWidget {
   final String label;

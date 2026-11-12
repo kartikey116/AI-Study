@@ -4,8 +4,10 @@ import '../../data/chat_repository.dart';
 class ChatMessage {
   final String content;
   final bool isUser;
+  final DateTime sentAt;
 
-  ChatMessage({required this.content, required this.isUser});
+  ChatMessage({required this.content, required this.isUser, DateTime? sentAt})
+      : sentAt = sentAt ?? DateTime.now();
 }
 
 class ChatState {
@@ -57,8 +59,9 @@ class ChatNotifier extends StateNotifier<ChatState> {
       
       final messages = dbMessages.map((m) {
         return ChatMessage(
-          content: m['content'], 
-          isUser: m['role'] == 'USER'
+          content: m['content'],
+          isUser: m['role'] == 'USER',
+          sentAt: DateTime.tryParse(m['createdAt']?.toString() ?? '')?.toLocal(),
         );
       }).toList();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/components/math_markdown.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -241,8 +242,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Question Text
-                        Text(
-                          q['text'],
+                        MathText(
+                          q['text']?.toString() ?? '',
                           style: AppTypography.heading2.copyWith(
                             fontSize: 22,
                             height: 1.3,
@@ -329,7 +330,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                       ),
                                       const SizedBox(width: AppSpacing.md),
                                       Expanded(
-                                        child: Text(
+                                        child: MathText(
                                           opt,
                                           style: AppTypography.bodyLarge.copyWith(
                                             fontSize: 15,
@@ -372,8 +373,8 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text(
-                                  q['explanation'] ?? 'No explanation provided.',
+                                MathText(
+                                  q['explanation']?.toString() ?? 'No explanation provided.',
                                   style: AppTypography.bodyLarge.copyWith(
                                     fontSize: 15,
                                     color: AppColors.textSecondary,
@@ -531,7 +532,19 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    context.pushReplacement('/quiz/${widget.quizId}/review');
+                  },
+                  icon: const Icon(Icons.fact_check_outlined, color: AppColors.highlighter, size: 20),
+                  label: const Text('Review answers'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
                   onPressed: () {
                     Navigator.of(ctx).pop();
                     context.go('/quizzes');

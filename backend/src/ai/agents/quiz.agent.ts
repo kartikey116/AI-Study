@@ -1,9 +1,11 @@
 import { generateObject } from 'ai';
-import { google } from '@ai-sdk/google';
+import { geminiModel, MODELS } from '../providers/models';
+import { UNTRUSTED_DATA_RULE, wrapUntrusted } from '../guards/prompt-safety';
 import { z } from 'zod';
 import * as crypto from 'crypto';
 import { prisma } from '../../utils/db.util';
-import { retrieveChunks } from '../services/rag.service';
+import { sampleDocumentChunks } from '../services/rag.service';
+import { logger } from '../../utils/logger';
 
 const questionSchema = z.discriminatedUnion('type', [
   z.object({
@@ -52,14 +54,17 @@ export class QuizAgent {
     let contextText = '';
     
     if (documentId) {
-      // Pull random chunks from the document to seed the quiz generator
-      const chunks = await retrieveChunks(userId, 'Give me summary and core concepts', 10, documentId);
-      contextText = chunks.map(c => c.text).join('\n\n');
+      // Sample across the whole document so questions cover every section
+      const chunks = await sampleDocumentChunks(userId, documentId, 10);
+      contextText = chunks.map(c => `[Page ${c.pageNumber}] ${c.text}`).join('\n\n');
     }
 
+    // Only trusted values (validated enums/numbers) go in the system prompt; the
+    // student-typed title/subject and document text are passed as tagged data below.
     const systemPrompt = `You are an expert tutor creating a quiz with a mix of question types.
-Topic/Title: ${title}
-Subject: ${subject}
+The quiz topic is given in <topic> tags${contextText ? ' and the source material in <source_material> tags' : ''}.
+${UNTRUSTED_DATA_RULE}
+Only create academic study questions. If the topic is not an academic subject, create questions about study skills instead.
 Difficulty: ${difficulty}
 Total Questions: ${numQuestions}
 
@@ -89,26 +94,37 @@ ${difficulty === 'Hard' ? `1. NO KEYWORD MATCHING AT ALL.
 3. ADVANCED / SITUATIONAL: Formulate the options as applied scenarios, edge-cases, or advanced situational examples rather than simple definitions.
 4. TRICKY MISCONCEPTIONS: Base wrong options on subtle mixed-up concepts.` : ''}
 
+MATH FORMATTING:
+- Write every mathematical expression, formula, exponent, subscript or symbol as LaTeX inside single dollar signs, in the question text, every option and the explanation. Examples: "$2^{20}$ entries", "$\\frac{a}{1-r}$", "$x_1 + x_2$", "$O(n \\log n)$".
+- Always brace multi-character exponents and subscripts: $2^{12}$, not 2^12. Never write bare LaTeX commands outside dollar signs.
+- Do not use $$...$$ display math. Plain words and ordinary numbers (e.g. "32-bit", "4 KB") stay as normal text.
+- correctAnswer must be character-for-character identical to its option, including the dollar signs.
+
 IMPORTANT:
 - If a question asks "Which...", "What...", "How...", "Select..." → it MUST be MCQ, never TRUE_FALSE.
 - If a question is a statement about a fact → it should be TRUE_FALSE.
 - correctAnswer must exactly match one of the options (same text, same capitalization).
+${contextText ? '- Base every question on the source material.' : ''}`;
 
-${contextText ? `=== SOURCE MATERIAL (base your questions on this) ===\n${contextText}\n=================================================` : `Generate questions about "${title}" (within the context of ${subject}).`}`;
+    const prompt = [
+      wrapUntrusted('topic', `Title: ${title}\nSubject: ${subject}`),
+      contextText ? wrapUntrusted('source_material', contextText) : '',
+      'Generate the quiz now.',
+    ].filter(Boolean).join('\n\n');
 
     let generatedQuestions;
     let usage;
     try {
       const result = await generateObject({
-        model: google('gemini-3.8-flash'),
+        model: geminiModel(MODELS.main),
         schema: z.object({ questions: z.array(questionSchema) }),
         system: systemPrompt,
-        prompt: 'Generate the quiz now.',
+        prompt,
       });
       generatedQuestions = result.object;
       usage = result.usage;
     } catch (e: any) {
-      console.error('Quiz Generation AI Error:', e);
+      logger.error({ err: e }, 'Quiz Generation AI Error');
       if (e.statusCode === 429 || e.message?.includes('overloaded')) {
         throw new Error('The AI service is currently overloaded. Please try again in a moment.');
       }
@@ -161,14 +177,14 @@ ${contextText ? `=== SOURCE MATERIAL (base your questions on this) ===\n${contex
       await prisma.aiRequestLog.create({
         data: {
           userId,
-          modelName: 'gemini-3.8-flash',
+          modelName: MODELS.main,
           promptTokens,
           completionTokens,
           totalTokens,
           cost,
           requestType: 'QUIZ_GENERATION'
         }
-      }).catch(err => console.error('Failed to log quiz cost:', err));
+      }).catch(err => logger.error({ err: err }, 'Failed to log quiz cost'));
     }
 
     return {

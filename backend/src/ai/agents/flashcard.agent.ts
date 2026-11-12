@@ -1,8 +1,10 @@
 import { generateObject } from 'ai';
-import { google } from '@ai-sdk/google';
+import { geminiModel, MODELS } from '../providers/models';
+import { UNTRUSTED_DATA_RULE, wrapUntrusted } from '../guards/prompt-safety';
 import { z } from 'zod';
 import { prisma } from '../../utils/db.util';
-import { retrieveChunks } from '../services/rag.service';
+import { sampleDocumentChunks } from '../services/rag.service';
+import { logger } from '../../utils/logger';
 
 const flashcardSchema = z.object({
   front: z.string().describe('The question or term on the front of the card'),
@@ -32,30 +34,39 @@ export class FlashcardAgent {
     let contextText = '';
     
     if (documentId) {
-      const chunks = await retrieveChunks(userId, 'Core facts, definitions, and key concepts', 15, documentId);
-      contextText = chunks.map(c => c.text).join('\n\n');
+      // Sample across the whole document so cards cover every section
+      const chunks = await sampleDocumentChunks(userId, documentId, 15);
+      contextText = chunks.map(c => `[Page ${c.pageNumber}] ${c.text}`).join('\n\n');
     }
 
     const systemPrompt = `You are an expert tutor creating flashcards for spaced repetition.
 Total Cards: ${numCards}
 
-Create concise, single-concept flashcards. 
+Create concise, single-concept flashcards.
 Front: A clear question or term.
 Back: A concise, accurate answer or definition.
 
-${contextText ? `=== SOURCE MATERIAL ===\n${contextText}\n========================` : ''}`;
+The deck topic is given in <topic> tags${contextText ? '; base every card on the <source_material>' : ''}.
+${UNTRUSTED_DATA_RULE}
+Only create academic study cards.`;
+
+    const prompt = [
+      wrapUntrusted('topic', title),
+      contextText ? wrapUntrusted('source_material', contextText) : '',
+      'Generate the flashcards now.',
+    ].filter(Boolean).join('\n\n');
 
     let generatedCards;
     try {
       const result = await generateObject({
-        model: google('gemini-3.8-flash'),
+        model: geminiModel(MODELS.main),
         schema: z.object({ cards: z.array(flashcardSchema) }),
         system: systemPrompt,
-        prompt: 'Generate the flashcards now.',
+        prompt,
       });
       generatedCards = result.object;
     } catch (e: any) {
-      console.error('Flashcard Generation AI Error:', e);
+      logger.error({ err: e }, 'Flashcard Generation AI Error');
       if (e.statusCode === 429 || e.message?.includes('overloaded')) {
         throw new Error('The AI service is currently overloaded. Please try again in a moment.');
       }

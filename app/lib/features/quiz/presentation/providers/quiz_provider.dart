@@ -19,6 +19,10 @@ final currentQuizProvider = FutureProvider.family<Map<String, dynamic>, String>(
   return ref.watch(quizRepositoryProvider).getQuizDetails(id);
 });
 
+final quizReviewProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, id) {
+  return ref.watch(quizRepositoryProvider).getQuizReview(id);
+});
+
 class QuizGenerationNotifier extends StateNotifier<AsyncValue<void>> {
   final QuizRepository _repository;
   

@@ -5,7 +5,7 @@ export interface AIProvider {
    * Generates a streaming response.
    */
   streamGenerate(options: GenerateOptions): Promise<StreamTextResult<any>>;
-  
+
   /**
    * Generates a single text response (useful for fast, internal classification).
    */
@@ -17,4 +17,6 @@ export interface GenerateOptions {
   messages: CoreMessage[];
   system?: string;
   temperature?: number;
+  /** Cancels the request (e.g. the student closed the app mid-answer). */
+  abortSignal?: AbortSignal;
 }

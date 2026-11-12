@@ -26,6 +26,12 @@ class QuizRepository {
     return response.data;
   }
 
+  /// Quiz questions plus the latest attempt's per-question answers.
+  Future<Map<String, dynamic>> getQuizReview(String id) async {
+    final response = await _dioClient.dio.get('/quizzes/$id/review');
+    return response.data;
+  }
+
   Future<Map<String, dynamic>> submitAttempt(String quizId, List<Map<String, dynamic>> answers, int timeTaken) async {
     final response = await _dioClient.dio.post('/quizzes/$quizId/submit', data: {
       'answers': answers,

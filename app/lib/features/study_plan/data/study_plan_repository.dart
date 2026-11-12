@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../../../../core/network/dio_client.dart';
 
 class StudyPlanRepository {
@@ -16,11 +17,17 @@ class StudyPlanRepository {
     required List<String> subjects,
     required int hoursPerDay,
   }) async {
-    final response = await _dioClient.dio.post('/study/plan', data: {
-      'targetDate': targetDate.toIso8601String(),
-      'subjects': subjects,
-      'hoursPerDay': hoursPerDay,
-    });
+    final response = await _dioClient.dio.post(
+      '/study/plan',
+      data: {
+        // UTC with a 'Z' suffix: the API rejects ISO dates without a timezone offset
+        'targetDate': targetDate.toUtc().toIso8601String(),
+        'subjects': subjects,
+        'hoursPerDay': hoursPerDay,
+      },
+      // AI generation can outlast the default 30s (server holds the job lock for 120s)
+      options: Options(receiveTimeout: const Duration(seconds: 120)),
+    );
     return response.data as Map<String, dynamic>;
   }
 

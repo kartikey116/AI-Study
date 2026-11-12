@@ -1,79 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:markdown/markdown.dart' as md;
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_radius.dart';
-
-// ──────────────────────────────────────────────────────────────────────────────
-// LaTeX pre-processor
-// Converts $...$ and $$...$$ into custom code-fence markers so that a single
-// MarkdownBody call can handle ALL markdown syntax (headings, code-blocks,
-// blockquotes, HR, etc.) without any fragmentation.
-// ──────────────────────────────────────────────────────────────────────────────
-
-String _preprocessLatex(String text) {
-  // Block math:  $$...$$  →  ```blockmath\n...\n```
-  String out = text.replaceAllMapped(
-    RegExp(r'\$\$([\s\S]*?)\$\$'),
-    (m) => '\n\n```blockmath\n${m.group(1)!.trim()}\n```\n\n',
-  );
-  // Inline math: $...$ → `inlinemath:...`
-  out = out.replaceAllMapped(
-    RegExp(r'\$([^\$\n]+?)\$'),
-    (m) => '`inlinemath:${m.group(1)}`',
-  );
-  return out;
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
-// Custom MarkdownElementBuilder – intercepts our math code fences
-// ──────────────────────────────────────────────────────────────────────────────
-
-class _MathCodeBuilder extends MarkdownElementBuilder {
-  final TextStyle? textStyle;
-  _MathCodeBuilder({this.textStyle});
-
-  @override
-  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    final text = element.textContent.trim();
-
-    // Inline math: `inlinemath:...`
-    if (element.tag == 'code' && text.startsWith('inlinemath:')) {
-      final formula = text.substring('inlinemath:'.length);
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Math.tex(
-          formula,
-          textStyle: textStyle ?? const TextStyle(fontSize: 14),
-          onErrorFallback: (_) =>
-              Text(r'$' + formula + r'$', style: textStyle?.copyWith(fontFamily: 'monospace')),
-        ),
-      );
-    }
-
-    // Block math: ```blockmath\n...\n```
-    if (element.tag == 'code' &&
-        element.attributes['class'] == 'language-blockmath') {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Center(
-          child: Math.tex(
-            text,
-            textStyle: (textStyle ?? const TextStyle(fontSize: 14)).copyWith(fontSize: 18),
-            onErrorFallback: (_) =>
-                Text(r'$$' + text + r'$$', style: textStyle?.copyWith(fontFamily: 'monospace')),
-          ),
-        ),
-      );
-    }
-
-    return null; // Let flutter_markdown handle everything else normally
-  }
-}
+import 'math_markdown.dart';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Main AI message bubble
@@ -104,102 +35,59 @@ class AiMessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final processed = _preprocessLatex(text.isEmpty ? ' ' : text);
-    final bodyStyle = AppTypography.bodyLarge;
-
+    // No bubble: the reply reads like notes on the page, using the full width.
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md, right: 36.0),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AssistantMonogram(),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Clean White Message Bubble
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(4),
-                      topRight: Radius.circular(AppRadius.lg),
-                      bottomLeft: Radius.circular(AppRadius.lg),
-                      bottomRight: Radius.circular(AppRadius.lg),
-                    ),
-                    border: Border.all(color: AppColors.line),
-                  ),
-                  child: MarkdownBody(
-                    data: processed,
-                    selectable: true,
-                    extensionSet: md.ExtensionSet.gitHubFlavored,
-                    builders: {
-                      'code': _MathCodeBuilder(textStyle: bodyStyle),
-                    },
-                    styleSheet: MarkdownStyleSheet(
-                      p: bodyStyle.copyWith(
-                        color: AppColors.textPrimary,
-                        height: 1.55,
-                        fontSize: 15,
-                      ),
-                      h1: AppTypography.heading3.copyWith(fontSize: 21, height: 1.3),
-                      h2: AppTypography.heading3.copyWith(fontSize: 18, height: 1.3),
-                      h3: bodyStyle.copyWith(
-                          fontSize: 15, fontWeight: FontWeight.w700, height: 1.4, color: AppColors.textPrimary),
-                      codeblockPadding: const EdgeInsets.all(12),
-                      codeblockDecoration: BoxDecoration(
-                        color: AppColors.ink,
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                      code: AppTypography.mono.copyWith(
-                        fontSize: 12.5,
-                        color: AppColors.highlighter,
-                        backgroundColor: Colors.transparent,
-                      ),
-                      blockquote: bodyStyle.copyWith(fontStyle: FontStyle.italic, color: AppColors.textSecondary),
-                      blockquoteDecoration: const BoxDecoration(
-                        border: Border(left: BorderSide(color: AppColors.highlighter, width: 3)),
-                        color: AppColors.paper,
-                      ),
-                      listBullet: bodyStyle.copyWith(color: AppColors.primary, fontWeight: FontWeight.w700),
-                      strong: bodyStyle.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                        backgroundColor: AppColors.highlighterSoft,
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Timestamp below bubble
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        timestamp ?? '9:41 AM',
-                        style: AppTypography.label.copyWith(fontSize: 10, letterSpacing: 0.4),
-                      ),
-                      if (!isStreaming && text.isNotEmpty)
-                        IconButton(
-                          onPressed: () => _copy(context),
-                          tooltip: 'Copy reply',
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.copy_rounded, size: 16, color: AppColors.textMuted),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+          _AssistantHeader(timestamp: timestamp),
+          const SizedBox(height: 8),
+          MathMarkdown(data: text, selectable: true),
+          if (!isStreaming && text.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: IconButton(
+                onPressed: () => _copy(context),
+                tooltip: 'Copy reply',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.copy_rounded, size: 16, color: AppColors.textMuted),
+              ),
             ),
-          ),
         ],
       ),
     );
   }
+}
+
+/// "S" monogram + "STUDYAI · 3:32 PM" above each assistant reply.
+class _AssistantHeader extends StatelessWidget {
+  final String? timestamp;
+  const _AssistantHeader({this.timestamp});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const AssistantMonogram(size: 28),
+        const SizedBox(width: 10),
+        Text(
+          timestamp == null ? 'STUDYAI' : 'STUDYAI · $timestamp',
+          style: AppTypography.label.copyWith(color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+}
+
+/// "3:32 PM" for today, "24 Oct · 3:32 PM" for older messages.
+String formatMessageTime(BuildContext context, DateTime time) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  final local = time.toLocal();
+  final now = DateTime.now();
+  final clock = TimeOfDay.fromDateTime(local).format(context);
+  final sameDay = local.year == now.year && local.month == now.month && local.day == now.day;
+  return sameDay ? clock : '${local.day} ${months[local.month - 1]} · $clock';
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -266,19 +154,14 @@ class AiTypingIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md, right: 48.0),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AssistantMonogram(),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: AppColors.line),
-            ),
+          const _AssistantHeader(),
+          const SizedBox(height: 12),
+          Semantics(
+            label: 'Assistant is writing',
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -342,13 +225,14 @@ class UserMessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, right: 4),
-                  child: Text(
-                    timestamp ?? '9:42 AM',
-                    style: AppTypography.label.copyWith(fontSize: 10, letterSpacing: 0.4),
+                if (timestamp != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, right: 4),
+                    child: Text(
+                      timestamp!,
+                      style: AppTypography.label.copyWith(fontSize: 10, letterSpacing: 0.4),
+                    ),
                   ),
-                ),
               ],
             ),
           ),

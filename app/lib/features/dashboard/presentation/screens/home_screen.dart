@@ -22,9 +22,8 @@ class HomeScreen extends ConsumerWidget {
     final user = authState.user;
     final String firstName = user?.profile?.firstName?.isNotEmpty == true
         ? user!.profile!.firstName!
-        : (user?.email.split('@').first ?? 'kartikey');
+        : (user?.email.split('@').first ?? 'there');
 
-    final dashboardAsync = ref.watch(dashboardProvider);
     final now = DateTime.now();
     final dateLabel = '${_weekdays[now.weekday - 1]} · ${now.day} ${_months[now.month - 1]}';
 
@@ -149,68 +148,23 @@ class HomeScreen extends ConsumerWidget {
 
               const SizedBox(height: 20),
 
-              // ── 2. 4-Card Stats Row ─────────────────────────────────────────
+              // ── Stats: tasks, streak, level ─────────────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: dashboardAsync.when(
-                  data: (data) {
-                    final studyTime = data['studyTime']?.toString() ?? '12h 30m';
-                    final tasksDone = data['tasksCompleted']?.toString() ?? '8';
-                    final streak = data['streakDays']?.toString() ?? '12 Days';
-                    final level = data['userLevel']?.toString() ?? 'Level 3';
-
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: _StatCard(
-                            icon: Icons.schedule_rounded,
-                            iconColor: AppColors.primary,
-                            iconBgColor: AppColors.primarySoft,
-                            value: studyTime,
-                            label: 'Study Time',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            icon: Icons.task_alt_rounded,
-                            iconColor: AppColors.success,
-                            iconBgColor: AppColors.successSoft,
-                            value: tasksDone,
-                            label: 'Tasks Done',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            icon: Icons.local_fire_department_rounded,
-                            iconColor: AppColors.accent,
-                            iconBgColor: AppColors.accentLight,
-                            value: streak.contains('Day') ? streak : '$streak Days',
-                            label: 'Streak',
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _StatCard(
-                            icon: Icons.trending_up_rounded,
-                            iconColor: AppColors.info,
-                            iconBgColor: AppColors.infoSoft,
-                            value: level,
-                            label: 'Learner',
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                  loading: () => const _StatsRowFallback(),
-                  error: (_, __) => const _StatsRowFallback(),
-                ),
+                child: ref.watch(dashboardProvider).when(
+                      data: (data) => _StatsRow(
+                        tasksDone: data['tasksCompleted']?.toString() ?? '0',
+                        streak: _streakLabel(data['streakDays']),
+                        level: data['userLevel']?.toString() ?? 'Level 1',
+                      ),
+                      loading: () => const _StatsRow(),
+                      error: (_, __) => const _StatsRow(),
+                    ),
               ),
 
               const SizedBox(height: 20),
 
-              // ── 3. Hero Card ────────────────────────────────────────────────
+              // ── 2. Hero Card ────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 20, 0),
                 child: _AiHeroCard(
@@ -286,19 +240,8 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
 
-              const SizedBox(height: 28),
-
-              // ── 5. Recent Quizzes Header & List ─────────────────────────────
-              _SectionHeader(
-                title: 'Recent quizzes',
-                actionLabel: 'View all',
-                onAction: () => context.push('/quizzes'),
-              ),
-              const SizedBox(height: 10),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: _RecentQuizzesSection(),
-              ),
+              // ── 5. Recent Quizzes (only when the user has quizzes) ─────────────────────────────
+              const _RecentQuizzesSection(),
             ],
           ),
         ),
@@ -358,52 +301,53 @@ class _SectionHeader extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 1. Stats Card (Study Time, Tasks Done, Streak, Learner)
+// 1. Stats row (Tasks Done, Streak, Level)
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _StatsRowFallback extends StatelessWidget {
-  const _StatsRowFallback();
+String _streakLabel(dynamic raw) {
+  final text = raw?.toString() ?? '0';
+  final days = int.tryParse(text.split(' ').first);
+  if (days == null) return text;
+  return days == 1 ? '1 day' : '$days days';
+}
+
+class _StatsRow extends StatelessWidget {
+  final String tasksDone;
+  final String streak;
+  final String level;
+
+  const _StatsRow({this.tasksDone = '—', this.streak = '—', this.level = '—'});
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        Expanded(
-          child: _StatCard(
-            icon: Icons.schedule_rounded,
-            iconColor: AppColors.primary,
-            iconBgColor: AppColors.primarySoft,
-            value: '12h 30m',
-            label: 'Study Time',
-          ),
-        ),
-        SizedBox(width: 8),
         Expanded(
           child: _StatCard(
             icon: Icons.task_alt_rounded,
             iconColor: AppColors.success,
             iconBgColor: AppColors.successSoft,
-            value: '8',
-            label: 'Tasks Done',
+            value: tasksDone,
+            label: 'Tasks done',
           ),
         ),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         Expanded(
           child: _StatCard(
             icon: Icons.local_fire_department_rounded,
             iconColor: AppColors.accent,
             iconBgColor: AppColors.accentLight,
-            value: '12 Days',
+            value: streak,
             label: 'Streak',
           ),
         ),
-        SizedBox(width: 8),
+        const SizedBox(width: 8),
         Expanded(
           child: _StatCard(
             icon: Icons.trending_up_rounded,
             iconColor: AppColors.info,
             iconBgColor: AppColors.infoSoft,
-            value: 'Level 3',
+            value: level,
             label: 'Learner',
           ),
         ),
@@ -429,50 +373,47 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 10, 8, 10),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.line),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              borderRadius: BorderRadius.circular(AppRadius.sm),
-            ),
-            child: Icon(icon, color: iconColor, size: 16),
-          ),
-          const SizedBox(height: 10),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: AppTypography.mono.copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+    return Semantics(
+      label: '$label: $value',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: AppColors.line),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
-              maxLines: 1,
+              child: Icon(icon, color: iconColor, size: 17),
             ),
-          ),
-          const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
+            const SizedBox(height: 12),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: AppTypography.mono.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
               label.toUpperCase(),
-              style: AppTypography.label.copyWith(fontSize: 9, letterSpacing: 0.8),
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTypography.label.copyWith(fontSize: 10, letterSpacing: 0.8),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -597,16 +538,21 @@ class _QuizStackArt extends StatelessWidget {
               child: _paperCard(
                 color: AppColors.surface,
                 child: Padding(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Q.04', style: AppTypography.label.copyWith(fontSize: 9, color: AppColors.ink)),
+                      Text(
+                        'Q.04',
+                        textScaler: TextScaler.noScaling,
+                        style: AppTypography.label.copyWith(fontSize: 9, color: AppColors.ink, height: 1.2),
+                      ),
                       const SizedBox(height: 6),
                       _line(52),
                       const SizedBox(height: 4),
                       _line(38),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       _option(false),
                       const SizedBox(height: 5),
                       _option(true),
@@ -751,75 +697,63 @@ class _RecentQuizzesSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final quizzesAsync = ref.watch(quizzesProvider);
+    final quizzes = ref.watch(quizzesProvider).asData?.value ?? const [];
+    if (quizzes.isEmpty) return const SizedBox.shrink();
+    final activeIds = ref.watch(activeQuizIdsProvider).asData?.value ?? const <String>{};
 
-    return quizzesAsync.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
+    return Padding(
+      padding: const EdgeInsets.only(top: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SectionHeader(
+            title: 'Recent quizzes',
+            actionLabel: 'View all',
+            onAction: () => context.push('/quizzes'),
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: quizzes.take(3).toList().asMap().entries.map((entry) {
+                final quiz = entry.value;
+                final id = quiz['id']?.toString() ?? '';
+                final title = quiz['title']?.toString() ?? 'Quiz';
+                final questionsCount = (quiz['_count']?['questions'] as num?)?.toInt() ?? 0;
+                final attempts = quiz['attempts'] as List? ?? [];
+                final score = attempts.isNotEmpty ? (attempts.first['score'] as num?)?.round() : null;
+                final inProgress = activeIds.contains(id);
+                final completed = score != null && !inProgress;
+
+                final (statusText, statusBg, statusFg) = inProgress
+                    ? ('In progress', AppColors.highlighterSoft, AppColors.ink)
+                    : completed
+                        ? ('$score%', score >= 70 ? AppColors.successSoft : AppColors.warningSoft,
+                            score >= 70 ? AppColors.success : AppColors.warning)
+                        : ('New', AppColors.infoSoft, AppColors.info);
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _RecentQuizItemCard(
+                    title: title,
+                    subtitle: [
+                      '$questionsCount questions',
+                      if (quiz['subject'] != null) quiz['subject'].toString(),
+                    ].join(' · '),
+                    icon: completed ? Icons.fact_check_outlined : Icons.quiz_outlined,
+                    tint: AppColors.tags[entry.key % AppColors.tags.length],
+                    statusText: statusText,
+                    statusBgColor: statusBg,
+                    statusTextColor: statusFg,
+                    // Finished quizzes open the score + answer breakdown; others open the quiz
+                    onTap: () => context.push(completed ? '/quiz/$id/review' : '/quiz/$id'),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
-      error: (_, __) => _buildMockQuizzesList(context),
-      data: (quizzes) {
-        if (quizzes.isEmpty) {
-          return _buildMockQuizzesList(context);
-        }
-
-        // Display user's actual recent quizzes
-        return Column(
-          children: quizzes.take(3).toList().asMap().entries.map((entry) {
-            final quiz = entry.value;
-            final id = quiz['id']?.toString() ?? '';
-            final title = quiz['title']?.toString() ?? 'Quiz';
-            final questionsCount = (quiz['questions'] as List?)?.length ?? 10;
-            final attempts = quiz['attempts'] as List? ?? [];
-            final hasAttempt = attempts.isNotEmpty;
-            final score = hasAttempt ? (attempts.first['score'] as num?)?.round() : null;
-            final isCompleted = hasAttempt;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _RecentQuizItemCard(
-                title: title,
-                subtitle: '$questionsCount questions · ${score ?? 80}%',
-                icon: Icons.storage_rounded,
-                tint: AppColors.tags[entry.key % AppColors.tags.length],
-                statusText: isCompleted ? 'Completed' : 'In Progress',
-                statusBgColor: isCompleted ? AppColors.successSoft : AppColors.warningSoft,
-                statusTextColor: isCompleted ? AppColors.success : AppColors.warning,
-                onTap: () => context.push('/quiz/$id'),
-              ),
-            );
-          }).toList(),
-        );
-      },
-    );
-  }
-
-  Widget _buildMockQuizzesList(BuildContext context) {
-    return Column(
-      children: [
-        _RecentQuizItemCard(
-          title: 'DBMS – Normalization',
-          subtitle: '10 questions · 85%',
-          icon: Icons.storage_rounded,
-          tint: AppColors.tagSage,
-          statusText: 'Completed',
-          statusBgColor: AppColors.successSoft,
-          statusTextColor: AppColors.success,
-          onTap: () => context.push('/quizzes'),
-        ),
-        const SizedBox(height: 8),
-        _RecentQuizItemCard(
-          title: 'Operating Systems',
-          subtitle: '15 questions · 60%',
-          icon: Icons.memory_rounded,
-          tint: AppColors.tagClay,
-          statusText: 'In Progress',
-          statusBgColor: AppColors.warningSoft,
-          statusTextColor: AppColors.warning,
-          onTap: () => context.push('/quizzes'),
-        ),
-      ],
     );
   }
 }

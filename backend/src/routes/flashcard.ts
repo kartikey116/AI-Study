@@ -5,6 +5,7 @@ import { generationLimiter } from '../middleware/rate-limit.middleware';
 import { prisma } from '../utils/db.util';
 import { uuid, promptLabel, validateBody } from '../utils/validation.util';
 import { FlashcardAgent } from '../ai/agents/flashcard.agent';
+import { checkStudyTopic } from '../ai/guards/topic-guard';
 import { DocumentStatus } from '@prisma/client';
 
 const router = Router();
@@ -34,6 +35,10 @@ router.post('/generate', generationLimiter, validateBody(generateDeckSchema), as
         select: { id: true },
       });
       if (!owned) return res.status(404).json({ error: 'Document not found' });
+    } else {
+      // Topic-only decks must be academic (document decks use the student's own material)
+      const rejection = await checkStudyTopic(req.userId!, title);
+      if (rejection) return res.status(400).json({ error: rejection });
     }
 
     const result = await flashcardAgent.generateDeck(

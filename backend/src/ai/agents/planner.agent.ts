@@ -1,5 +1,9 @@
 import { generateObject, generateText } from 'ai';
-import { google } from '@ai-sdk/google';
+import { geminiModel, MODELS } from '../providers/models';
+import { UNTRUSTED_DATA_RULE, wrapUntrusted } from '../guards/prompt-safety';
+import { cacheGet, cacheSet } from '../../utils/cache.util';
+import { logger } from '../../utils/logger';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 import { prisma } from '../../utils/db.util';
 
@@ -25,8 +29,10 @@ export class PlannerAgent {
       return { planId: existingPlan.id, tasks: existingPlan.tasks, cached: true };
     }
 
+    // Subjects are student-typed, so they're passed as tagged data, not in the system prompt
     const systemPrompt = `You are an expert study planner.
-The user wants to study the following subjects: ${subjects.join(', ')}
+The subjects the student wants to study are given in <topic> tags.
+${UNTRUSTED_DATA_RULE}
 They have an exam/target date on ${targetDate.toISOString().split('T')[0]}.
 They can study ${hoursPerDay} hours per day.
 
@@ -36,14 +42,14 @@ Mix REVISION, QUIZ, and READING.`;
     let planData;
     try {
       const result = await generateObject({
-        model: google('gemini-3.8-flash'),
+        model: geminiModel(MODELS.main),
         schema: z.object({ tasks: z.array(studyTaskSchema) }),
         system: systemPrompt,
-        prompt: 'Generate the 7-day plan.',
+        prompt: `${wrapUntrusted('topic', subjects.join('\n'))}\n\nGenerate the 7-day plan.`,
       });
       planData = result.object;
     } catch (e: any) {
-      console.error('Planner AI Error:', e);
+      logger.error({ err: e }, 'Planner AI Error');
       if (e.statusCode === 429 || e.message?.includes('overloaded')) {
         throw new Error('The AI service is currently overloaded. Please try again in a moment.');
       }
@@ -98,18 +104,26 @@ Mix REVISION, QUIZ, and READING.`;
       const weakest = masteries[0];
       nextAction = `Revise ${weakest.topic}`;
 
-      const prompt = `The user is studying. Their weakest topic is currently "${weakest.topic}" at ${Math.round(weakest.masteryLevel)}% mastery.
-      Provide a short, motivating 1-sentence tip on how to improve this topic.`;
+      // Cached per user + topic + mastery level: the dashboard loads often, the tip rarely changes
+      const mastery = Math.round(weakest.masteryLevel);
+      const cacheKey = `tip:${userId}:${createHash('sha256').update(`${weakest.topic}|${mastery}`).digest('hex').slice(0, 16)}`;
+      const cachedTip = await cacheGet<string>(cacheKey);
 
-      try {
-        const { text } = await generateText({
-          model: google('gemini-3.8-flash'),
-          prompt,
-        });
-        tip = text.trim();
-      } catch (e) {
-        console.error('Tip Generation AI Error:', e);
-        tip = "Keep studying to improve your weakest topic!";
+      if (cachedTip) {
+        tip = cachedTip;
+      } else {
+        try {
+          const { text } = await generateText({
+            model: geminiModel(MODELS.fast),
+            system: `Give a short, motivating 1-sentence study tip for improving the topic in <topic> tags.\n${UNTRUSTED_DATA_RULE}`,
+            prompt: `${wrapUntrusted('topic', weakest.topic)}\nCurrent mastery: ${mastery}%`,
+          });
+          tip = text.trim();
+          await cacheSet(cacheKey, tip, 12 * 60 * 60);
+        } catch (e) {
+          logger.error({ err: e }, 'Tip generation failed');
+          tip = "Keep studying to improve your weakest topic!";
+        }
       }
     } else if (docsCount > 0) {
       nextAction = "Take a Quiz";

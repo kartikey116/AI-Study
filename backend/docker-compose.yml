@@ -1,0 +1,36 @@
+# Production-like local stack: API + document worker + Redis.
+# The database and file storage stay on Supabase (from .env).
+#   docker compose up --build
+services:
+  redis:
+    image: redis:7.4.1-alpine
+    command: ["redis-server", "--appendonly", "yes"]   # persist queued jobs across restarts
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    ports: ["3000:3000"]
+    depends_on:
+      redis: { condition: service_healthy }
+
+  worker:
+    build: .
+    command: ["node", "dist/worker.js"]
+    env_file: .env
+    environment:
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+      SERVICE_NAME: studyai-worker
+    depends_on:
+      redis: { condition: service_healthy }
+
+volumes:
+  redis-data:

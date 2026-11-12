@@ -4,8 +4,10 @@ import { prisma } from '../utils/db.util';
 import { createSignedUploadUrl, deleteStorageFile, getStorageFileInfo } from '../utils/supabase.util';
 import { validateBody } from '../utils/validation.util';
 import { generationLimiter } from '../middleware/rate-limit.middleware';
-import { documentQueue, MAX_PDF_BYTES } from '../workers/document.worker';
+import { MAX_PDF_BYTES } from '../workers/document.worker';
+import { enqueueDocument } from '../queues/document.queue';
 import { DocumentStatus } from '@prisma/client';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -64,7 +66,7 @@ router.post('/upload-url', validateBody(uploadUrlSchema), async (req: Request, r
 
     res.json({ signedUrl, storagePath, token });
   } catch (err: any) {
-    console.error('[Documents] upload-url error:', err);
+    logger.error({ err: err }, 'upload-url error');
     res.status(500).json({ error: 'Failed to generate upload URL' });
   }
 });
@@ -105,8 +107,8 @@ router.post('/', generationLimiter, validateBody(confirmUploadSchema), async (re
       },
     });
 
-    // Enqueue processing job
-    documentQueue.add(doc.id, {
+    // Enqueue processing job (BullMQ worker in production, in-process in local dev)
+    await enqueueDocument({
       documentId: doc.id,
       storagePath: doc.storagePath,
       userId,
@@ -114,7 +116,7 @@ router.post('/', generationLimiter, validateBody(confirmUploadSchema), async (re
 
     res.status(201).json({ document: doc });
   } catch (err: any) {
-    console.error('[Documents] create error:', err);
+    logger.error({ err: err }, 'create error');
     res.status(500).json({ error: 'Failed to create document' });
   }
 });
@@ -192,7 +194,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
 
     // Delete from storage
     await deleteStorageFile(doc.storagePath).catch(err =>
-      console.warn('[Documents] Storage delete failed (non-fatal):', err.message)
+      logger.warn({ err: err.message }, 'Storage delete failed')
     );
 
     res.json({ success: true });

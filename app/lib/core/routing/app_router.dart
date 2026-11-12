@@ -18,6 +18,7 @@ import '../../features/dashboard/presentation/screens/timer_screen.dart';
 import '../../features/quiz/presentation/screens/quiz_list_screen.dart';
 import '../../features/quiz/presentation/screens/quiz_setup_screen.dart';
 import '../../features/quiz/presentation/screens/quiz_screen.dart';
+import '../../features/quiz/presentation/screens/quiz_review_screen.dart';
 import '../../features/flashcard/presentation/screens/flashcard_screen.dart';
 import '../../core/layout/main_layout.dart';
 
@@ -94,6 +95,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final id = state.pathParameters['id']!;
           return QuizScreen(quizId: id);
+        },
+      ),
+      GoRoute(
+        path: '/quiz/:id/review',
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return QuizReviewScreen(quizId: id);
         },
       ),
       GoRoute(

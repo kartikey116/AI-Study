@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/network/api_error.dart';
 import '../../../../core/layout/main_layout.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_radius.dart';
@@ -92,7 +93,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                   const SizedBox(height: 16),
                   Text('Failed to load schedule', style: AppTypography.heading3),
                   const SizedBox(height: 8),
-                  Text('$err', textAlign: TextAlign.center, style: AppTypography.bodySmall),
+                  Text(apiErrorMessage(err), textAlign: TextAlign.center, style: AppTypography.bodySmall),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => ref.invalidate(studyPlanProvider),
@@ -446,7 +447,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                   await ref.read(studyPlanNotifierProvider.notifier).toggleTask(task['id']);
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update task: $e')));
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Couldn't update the task. ${apiErrorMessage(e)}")));
                   }
                 }
               },
@@ -759,7 +760,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
                                       isGenerating = false;
                                     });
                                     messenger.showSnackBar(
-                                      SnackBar(content: Text('Failed to generate plan: $e')),
+                                      SnackBar(content: Text("Couldn't build your plan. ${apiErrorMessage(e)}")),
                                     );
                                   }
                                 },
@@ -820,7 +821,7 @@ class _StudyPlanScreenState extends ConsumerState<StudyPlanScreen> {
               try {
                 await ref.read(studyPlanNotifierProvider.notifier).deletePlan(planId);
               } catch (e) {
-                messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                messenger.showSnackBar(SnackBar(content: Text("Couldn't delete the plan. ${apiErrorMessage(e)}")));
               }
             },
             child: const Text('Delete'),

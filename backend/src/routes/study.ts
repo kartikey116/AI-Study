@@ -5,6 +5,8 @@ import { generationLimiter } from '../middleware/rate-limit.middleware';
 import { prisma } from '../utils/db.util';
 import { validateBody } from '../utils/validation.util';
 import { PlannerAgent } from '../ai/agents/planner.agent';
+import { checkStudyTopic } from '../ai/guards/topic-guard';
+import { acquireLock, releaseLock } from '../utils/redis.util';
 
 const router = Router();
 const plannerAgent = new PlannerAgent();
@@ -41,18 +43,20 @@ router.get('/plan', async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-const activePlanGenerations = new Set<string>();
-
 // Generate Study Plan
 router.post('/plan', generationLimiter, validateBody(generatePlanSchema), async (req: Request, res: Response): Promise<any> => {
   const userId = req.userId!;
-  if (activePlanGenerations.has(userId)) {
+  // One generation per user at a time, across all API instances (Redis lock; auto-expires)
+  const lockKey = `plan:${userId}`;
+  if (!(await acquireLock(lockKey, 120))) {
     return res.status(429).json({ error: 'Study plan generation is already in progress. Please wait a moment.' });
   }
 
-  activePlanGenerations.add(userId);
   try {
     const { targetDate, subjects, hoursPerDay } = req.body as z.infer<typeof generatePlanSchema>;
+
+    const rejection = await checkStudyTopic(userId, subjects.join(', '));
+    if (rejection) return res.status(400).json({ error: rejection });
 
     // Clean previous plans so user has one active, up-to-date schedule
     await prisma.studyPlan.deleteMany({
@@ -79,7 +83,7 @@ router.post('/plan', generationLimiter, validateBody(generatePlanSchema), async 
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Internal server error' });
   } finally {
-    activePlanGenerations.delete(userId);
+    await releaseLock(lockKey);
   }
 });
 

@@ -6,7 +6,12 @@ import { chatLimiter } from '../middleware/rate-limit.middleware';
 import { prisma } from '../utils/db.util';
 import { uuid, validateBody } from '../utils/validation.util';
 import { StudyOrchestrator } from '../ai/orchestrator';
+import { MODELS } from '../ai/providers/models';
+import { LeakGuard, LEAK_REPLACEMENT } from '../ai/guards/prompt-safety';
+import { logger } from '../utils/logger';
 import { CoreMessage } from 'ai';
+
+const EMPTY_ANSWER_FALLBACK = "I couldn't generate an answer to that. Could you rephrase your question about the topic you're studying?";
 
 const router = Router();
 const orchestrator = new StudyOrchestrator();
@@ -130,12 +135,11 @@ router.post('/', chatLimiter, validateBody(chatSchema), async (req: Request, res
       },
     });
 
-    // 3. Prepare context for AI
-    const coreMessages: CoreMessage[] = recentMessages.map((msg) => ({
-      role: msg.role === Role.USER ? 'user' : (msg.role === Role.ASSISTANT ? 'assistant' : 'system'),
-      content: msg.content,
-    }));
-    
+    // 3. Prepare context for AI (only user/assistant turns are ever stored or sent)
+    const coreMessages: CoreMessage[] = recentMessages
+      .filter((msg) => msg.role === Role.USER || msg.role === Role.ASSISTANT)
+      .map((msg) => ({ role: msg.role === Role.USER ? 'user' : 'assistant', content: msg.content }));
+
     // Add the new user message
     coreMessages.push({ role: 'user', content: message });
 
@@ -149,70 +153,79 @@ router.post('/', chatLimiter, validateBody(chatSchema), async (req: Request, res
     // Send immediate initial meta packet so client connection starts within milliseconds
     res.write(`data: ${JSON.stringify({ type: 'meta', conversationId: currentConversationId })}\n\n`);
 
-    // 5. Delegate to Orchestrator
-    const { stream, intentCostData, citations } = await orchestrator.handleChat(userId, currentConversationId, coreMessages, summary, documentId);
+    // Stop generating (and paying for) tokens if the student closes the app mid-answer
+    const abort = new AbortController();
+    res.on('close', () => { if (!res.writableEnded) abort.abort(); });
 
-    if (citations && citations.length > 0) {
+    // 5. Delegate to Orchestrator
+    const { textStream, usage, citations, blocked } = await orchestrator.handleChat(userId, coreMessages, summary, documentId, abort.signal);
+
+    if (citations.length > 0) {
       res.write(`data: ${JSON.stringify({ type: 'citations', citations })}\n\n`);
     }
 
-    let fullResponse = '';
-    let completionTokens = 0;
+    // The leak guard holds back a short tail so system-prompt text can be caught before it's sent
+    const guard = new LeakGuard();
+    const send = (text: string) => { if (text) res.write(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`); };
 
-    // Read the stream
-    const reader = stream.textStream.getReader();
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      
-      fullResponse += value;
-      completionTokens += Math.ceil(value.length / 4); // rough estimate
-      
-      // SSE format requires "data: <payload>\n\n"
-      res.write(`data: ${JSON.stringify({ type: 'chunk', text: value })}\n\n`);
+    const reader = textStream.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        send(guard.push(value));
+        if (guard.leaked) {
+          abort.abort();
+          logger.warn({ userId, conversationId: currentConversationId }, 'Blocked system-prompt leak in tutor output');
+          break;
+        }
+      }
+    } catch (err: any) {
+      if (!abort.signal.aborted) throw err;
     }
 
-    // Done streaming
-    res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
-    res.end();
+    if (abort.signal.aborted && !guard.leaked) {
+      // Client disconnected: nothing more to send. Keep what they saw so history stays consistent.
+      logger.info({ userId, conversationId: currentConversationId }, 'Client disconnected; generation aborted');
+    } else {
+      send(guard.flush());
+      if (guard.leaked) send(LEAK_REPLACEMENT);
+      // Gemini's safety filter (or an empty completion) yields no text: never leave the student with a blank bubble
+      if (!guard.shownText.trim()) send(EMPTY_ANSWER_FALLBACK);
+      res.write(`data: ${JSON.stringify({ type: 'done' })}\n\n`);
+      res.end();
+    }
 
     // 6. Post-Processing (Async)
-    // Save Assistant Message
-    await prisma.message.create({
-      data: {
-        conversationId: currentConversationId,
-        role: Role.ASSISTANT,
-        content: fullResponse,
-      },
-    });
+    const shown = guard.shownText.trim() || (abort.signal.aborted ? '' : EMPTY_ANSWER_FALLBACK);
+    if (shown) {
+      await prisma.message.create({
+        data: { conversationId: currentConversationId, role: Role.ASSISTANT, content: shown },
+      });
+    }
 
-    // Log Generate Cost
-    // We don't have exact prompt tokens from stream easily without using full stream object,
-    // so we approximate or use usage stream (if supported). For now, rough estimate:
-    const promptTokens = Math.ceil(coreMessages.map(m => m.content.toString()).join(' ').length / 4);
-    await orchestrator.logCost(userId, {
-      modelName: 'gemini-3.8-flash',
-      promptTokens,
-      completionTokens,
-      requestType: 'TUTOR_RESPONSE',
-    }).catch(console.error);
+    // Real token usage from the API (aborted streams may not report it)
+    if (usage) {
+      usage.then(u => orchestrator.logCost(userId, {
+        modelName: MODELS.main, promptTokens: u.promptTokens, completionTokens: u.completionTokens, requestType: 'TUTOR_RESPONSE',
+      })).catch(err => logger.debug({ err: err?.message }, 'No usage reported for tutor response'));
+    }
 
-    // Trigger summarization if needed (e.g., > 10 messages)
+    // Rolling summary every 5 messages once the chat is long
     const totalMessages = await prisma.message.count({ where: { conversationId: currentConversationId, conversation: { userId } } });
-    if (totalMessages > 10 && totalMessages % 5 === 0) {
-      // Async summarize
-      orchestrator.summarizeConversation(coreMessages).then(async ({ summary, costData }) => {
+    if (!blocked && totalMessages > 10 && totalMessages % 5 === 0) {
+      orchestrator.summarizeConversation(summary, coreMessages).then(async ({ summary: newSummary, costData }) => {
         await prisma.conversation.updateMany({
           where: { id: currentConversationId, userId },
-          data: { summary }
+          data: { summary: newSummary }
         });
         await orchestrator.logCost(userId, costData);
-      }).catch(console.error);
+      }).catch(err => logger.error({ err }, 'Summarization failed'));
     }
 
   } catch (error: any) {
-    console.error('Chat error:', error);
+    logger.error({ err: error, userId: req.userId }, 'Chat error');
+    if (res.writableEnded || res.destroyed) return;
     let errorMsg = 'An unexpected error occurred while generating the response.';
     if (error.statusCode === 429 || error.message?.includes('overloaded')) {
       errorMsg = 'The AI service is currently overloaded. Please try again in a moment.';

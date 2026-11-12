@@ -3,6 +3,7 @@ import { AddressInfo } from 'net';
 import { randomUUID } from 'crypto';
 import { app } from '../src/app';
 import { prisma } from '../src/utils/db.util';
+import { sampleDocumentChunks } from '../src/ai/services/rag.service';
 
 // Tenant-isolation regression suite. Creates two throwaway users (A = attacker,
 // B = victim), gives B data in every feature, then tries to read / modify / use
@@ -111,10 +112,28 @@ async function main() {
       { answers: [{ questionId: bQuiz.questions[0].id, userResponse: 'a', timeTaken: 1 }], timeTaken: 1 });
     check('quizzes: cannot submit attempts to other user\'s quiz',
       r.status === 404 && (await prisma.quizAttempt.count({ where: { quizId: bQuiz.id } })) === 0, `${r.status}`);
+    await prisma.quizAttempt.create({
+      data: { quizId: bQuiz.id, userId: B.id, score: 100, timeTaken: 1,
+        answers: { create: { questionId: bQuiz.questions[0].id, userResponse: 'a', isCorrect: true, timeTaken: 1 } } },
+    });
+    r = await call('GET', `/quizzes/${bQuiz.id}/review`, A.token);
+    check('quizzes: cannot review other user\'s quiz attempt', r.status === 404 && !r.text.includes(bQuiz.questions[0].id), `${r.status} ${r.text}`);
+    const aQuiz = await prisma.quiz.create({
+      data: { userId: A.id, title: 'A quiz',
+        questions: { create: { type: 'MCQ', text: 'Q?', options: ['a', 'b'], correctAnswer: 'a', contentHash: randomUUID() } } },
+    });
+    await prisma.quizAttempt.create({ data: { quizId: aQuiz.id, userId: B.id, score: 0, timeTaken: 1 } });
+    r = await call('GET', `/quizzes/${aQuiz.id}/review`, A.token);
+    check('quizzes: review ignores attempts made by another user', r.status === 404, `${r.status} ${r.text}`);
+    await prisma.quiz.delete({ where: { id: aQuiz.id } });
     r = await call('DELETE', `/quizzes/${bQuiz.id}`, A.token);
     check('quizzes: cannot delete other user\'s quiz', !!(await prisma.quiz.findUnique({ where: { id: bQuiz.id } })));
     r = await call('POST', '/quizzes/generate', A.token, { title: 'x', documentId: bDoc.id });
     check('quizzes: cannot generate from other user\'s document', r.status === 404, `${r.status} ${r.text}`);
+
+    // ── RAG data access (service level) ─────────────────────────────────────
+    const leaked = await sampleDocumentChunks(A.id, bDoc.id, 10);
+    check('rag: whole-document sampling never returns other user\'s chunks', leaked.length === 0, `${leaked.length} rows`);
 
     // ── Flashcards ──────────────────────────────────────────────────────────
     r = await call('GET', '/flashcards/decks', A.token);

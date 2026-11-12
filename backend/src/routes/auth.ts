@@ -6,6 +6,7 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '.
 import { authenticate } from '../middleware/auth.middleware';
 import { authLimiter, refreshLimiter } from '../middleware/rate-limit.middleware';
 import { personName } from '../utils/validation.util';
+import { logger } from '../utils/logger';
 
 const router = Router();
 
@@ -81,7 +82,7 @@ router.post('/register', authLimiter, async (req: Request, res: Response): Promi
       const messages = error.errors.map(err => err.message).filter(Boolean).join('. ');
       return res.status(400).json({ error: messages, details: error.errors });
     }
-    console.error('Register error:', error);
+    logger.error({ err: error }, 'Register error');
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -128,7 +129,7 @@ router.post('/login', authLimiter, async (req: Request, res: Response): Promise<
       const messages = error.errors.map(err => err.message).filter(Boolean).join('. ');
       return res.status(400).json({ error: messages, details: error.errors });
     }
-    console.error('Login error:', error);
+    logger.error({ err: error }, 'Login error');
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
@@ -179,7 +180,7 @@ router.post('/logout', authenticate, async (req: Request, res: Response): Promis
     }
     return res.json({ message: 'Logged out successfully' });
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error({ err: error }, 'Logout error');
     return res.status(500).json({ error: 'Internal Server Error' });
   }
 });
